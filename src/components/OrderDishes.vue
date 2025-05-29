@@ -467,7 +467,7 @@ onMounted(() => {
 }
 
 .compact-input {
-    width: 180px; /* Set a specific shorter width for all these inputs */
+    width: 150px; /* Further reduced width for inputs */
 }
 
 .menu-section {
@@ -521,8 +521,8 @@ onMounted(() => {
 
 .menu-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Adjusted minmax for smaller cards */
+    gap: 15px; /* Reduced gap for more compactness */
     margin-top: 20px;
     max-height: calc(100vh - 400px); /* Adjusted max-height to be dynamic based on viewport height */
     overflow-y: auto; /* Added overflow-y for scrolling */
@@ -550,7 +550,7 @@ onMounted(() => {
 
 .dish-image {
     position: relative;
-    height: 160px;
+    height: 120px; /* Reduced image height */
     overflow: hidden;
     background-color: #f0f0f0; /* Placeholder background */
     flex-shrink: 0; /* Prevent image from shrinking */
@@ -563,7 +563,7 @@ onMounted(() => {
 }
 
 .dish-info {
-    padding: 16px;
+    padding: 12px; /* Reduced padding */
     flex-grow: 1; /* Allow dish-info to take remaining height */
     display: flex; /* Make dish-info a flex container */
     flex-direction: column; /* Arrange children in a column */
@@ -571,16 +571,16 @@ onMounted(() => {
 }
 
 .dish-name {
-    font-size: 16px;
+    font-size: 15px; /* Slightly reduced font size */
     font-weight: 600;
     color: #1f2937;
-    margin: 0 0 8px 0;
+    margin: 0 0 6px 0; /* Reduced margin */
 }
 
 .dish-description {
-    font-size: 14px;
+    font-size: 13px; /* Slightly reduced font size */
     color: #6b7280;
-    margin: 0 0 12px 0; /* Keep some margin for spacing */
+    margin: 0 0 10px 0; /* Reduced margin */
     line-height: 1.4;
     flex-grow: 1; /* Allow description to grow and push footer */
 }
@@ -595,11 +595,11 @@ onMounted(() => {
 .price-section {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px; /* Reduced gap */
 }
 
 .current-price {
-    font-size: 18px;
+    font-size: 16px; /* Slightly reduced font size */
     font-weight: 700;
     color: #ef4444;
 }
@@ -607,19 +607,19 @@ onMounted(() => {
 .quantity-control {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px; /* Reduced gap */
 }
 
 .quantity {
-    font-size: 16px;
+    font-size: 15px; /* Slightly reduced font size */
     font-weight: 600;
     color: #1f2937;
-    min-width: 20px;
+    min-width: 18px; /* Adjusted min-width */
     text-align: center;
 }
 
 .out-of-stock-text {
-    font-size: 14px;
+    font-size: 13px; /* Slightly reduced font size */
     color: #9ca3af;
     font-weight: 500;
 }
