@@ -78,4 +78,71 @@ export const deleteCanteen = (id) => {
     return api.delete(`/canteens/${id}`);
 };
 
+// 菜品管理相关 API
+export const getAllDishes = () => {
+    return api.get('/dishes/all');
+};
+
+export const getDishById = (id) => {
+    return api.get(`/dishes/${id}`);
+}
+
+export const createDish = (formData) => {
+    return api.post('/dishes', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+};
+
+export const getDishesByCanteenId = (id) => {
+    return api.get(`/dishes/canteen/${id}`);
+}
+
+export const updateDish = (id, formData) => {
+    return api.put(`/dishes/${id}`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+};
+
+export const deleteDish = (id) => {
+    return api.delete(`/dishes/${id}`);
+}
+
+//TODO 菜品过滤功能
+export const filterDishes = (params) => {
+    return api.post('/dishes/filter', params);
+};
+
+// 菜谱管理相关 API
+export const publishDailyMenu = (formData) => {
+    return api.post('/menu', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+};
+
+export const getDailyMenusByCanteenAndDate = (id,date) => {
+    return api.get(`/menus/canteen/${id}/${date}`);
+}
+
+export const getDailyMenuById = (id) => {
+    return api.get(`/menus/${id}`);
+}
+
+export const updateDailyMenu =(id,formData) => {
+    return api.put(`/menu/${id}`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
+
+export const deleteDailyMenu = (id) => {
+    return api.delete(`/menus/${id}`);
+}
+
 export default api;

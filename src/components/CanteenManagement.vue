@@ -7,6 +7,7 @@
       </button>
     </div>
 
+  <div class="table-scroll-container">
     <table>
       <thead>
       <tr>
@@ -36,6 +37,7 @@
       </tr>
       </tbody>
     </table>
+  </div>
 
     <!-- 添加/编辑食堂的模态框 -->
     <div v-if="showModal" class="modal">
@@ -262,18 +264,27 @@ table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  margin-top: 1.5rem;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
   border-radius: 10px;
   overflow: hidden;
   table-layout: fixed;
 }
 
+.table-scroll-container {
+    max-height: calc(100vh - 200px); /* Adjust this value as needed based on header/footer heights */
+    overflow-y: auto; /* Enable vertical scrolling */
+    background-color: #ffffff; /* Add background for a cleaner scroll area */
+    border-radius: 10px;
+}
+
 th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background-color: #f9fafb;
   color: #4b5563;
   font-weight: 600;
-  padding: 1rem 0.8rem;
+  padding: 0.8rem 0.8rem;
   border-bottom: 2px solid #e5e7eb;
   text-transform: uppercase;
   font-size: 0.8rem;

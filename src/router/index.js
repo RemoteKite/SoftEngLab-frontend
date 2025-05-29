@@ -8,6 +8,7 @@ import PublishRecipe from '@/components/PublishRecipe.vue'
 import FilterDishes from "@/components/FilterDishes.vue";
 import Feedback from "@/components/Feedback.vue";
 import Guidance from "@/components/Guidance.vue";
+import DishManagement from "@/components/DishManagement.vue";
 
 const routes = [
     {
@@ -43,6 +44,12 @@ const routes = [
                 name: 'Canteens',
                 component: Canteens,
                 meta: { title: '餐厅管理' }
+            },
+            {
+                path: 'dishes',
+                name: 'Dishes',
+                component: DishManagement,
+                meta: {title: '菜品管理'}
             },
             {
                 path: 'publish',

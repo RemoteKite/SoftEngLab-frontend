@@ -42,6 +42,10 @@
             <el-icon><Shop /></el-icon>
             <span>餐厅管理</span>
           </el-menu-item>
+          <el-menu-item index="/dishes">
+          <el-icon><Search /></el-icon>
+          <span>菜品管理</span>
+          </el-menu-item>
           <el-menu-item index="/publish">
             <el-icon><Edit /></el-icon>
             <span>发布菜谱</span>
