@@ -185,7 +185,7 @@ const dishRules = reactive({
             trigger: ['blur', 'change']
         }
     ],
-    description: [{ required: true, message: '请输入菜品描述', trigger: 'blur' }],
+    description: [{ required: false, message: '请输入菜品描述', trigger: 'blur' }],
     canteenId: [{ required: true, message: '请选择所属食堂', trigger: 'change' }],
 });
 

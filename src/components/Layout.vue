@@ -50,25 +50,17 @@
             <el-icon><Edit /></el-icon>
             <span>发布菜谱</span>
           </el-menu-item>
-          <el-menu-item index="/query">
-            <el-icon><Search /></el-icon>
-            <span>查询食堂菜品</span>
-          </el-menu-item>
           <el-menu-item index="/orders">
             <el-icon><Calendar /></el-icon>
             <span>预定餐品</span>
           </el-menu-item>
-          <el-menu-item index="/filterDishes">
-            <el-icon><Filter /></el-icon>
-            <span>筛选菜品</span>
-          </el-menu-item>
           <el-menu-item index="/feedback">
             <el-icon><ChatDotRound /></el-icon>
-            <span>评价与反馈</span>
+            <span>评价与反馈(未完成)</span>
           </el-menu-item>
           <el-menu-item index="/guidance">
             <el-icon><FirstAidKit /></el-icon>
-            <span>健康饮食指导</span>
+            <span>健康饮食指导(未完成)</span>
           </el-menu-item>
           <el-menu-item index="/users">
             <el-icon><User /></el-icon>

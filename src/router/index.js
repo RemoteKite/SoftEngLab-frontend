@@ -4,7 +4,6 @@ import Login from '@/components/Login.vue'
 import Canteens from '@/components/CanteenManagement.vue'
 import Dashboard from '@/components/Dashboard.vue'
 import Layout from '@/components/Layout.vue'
-import FilterDishes from "@/components/FilterDishes.vue";
 import Feedback from "@/components/Feedback.vue";
 import Guidance from "@/components/Guidance.vue";
 import DishManagement from "@/components/DishManagement.vue";
@@ -76,12 +75,6 @@ const routes = [
             //     meta: { title: '数据报表' }
             // }
             {
-                path: 'filterDishes',
-                name: 'FilterDishes',
-                component: FilterDishes,
-                meta: { title: '筛选菜谱' }
-            },
-            {
                 path: 'feedback',
                 name: 'Feedback',
                 component: Feedback,
@@ -99,13 +92,6 @@ const routes = [
                 component: () => import('@/components/OrderDishes.vue'),
                 meta: { title: '预定餐品' }
             },
-            {
-                path: 'query',
-                name: 'Query',
-                component: () => import('@/components/QueryMenu.vue'),
-                meta: { title: '预定餐品' }
-            }
-
         ]
     }
 
