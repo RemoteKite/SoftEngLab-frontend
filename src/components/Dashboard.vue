@@ -91,7 +91,7 @@
           </div>
         </el-col>
         <el-col :span="4">
-          <div class="action-item" @click="$router.push('/menu')">
+          <div class="action-item" @click="$router.push('/dishes')">
             <el-icon class="action-icon"><Menu /></el-icon>
             <span>添加菜品</span>
           </div>

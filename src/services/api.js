@@ -117,32 +117,36 @@ export const filterDishes = (params) => {
 };
 
 // 菜谱管理相关 API
-export const publishDailyMenu = (formData) => {
-    return api.post('/menu', formData, {
+export const publishDailyMenu = (params) => {
+    return api.post('/menu', params, {
         headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'application/json'
         }
     });
 };
 
 export const getDailyMenusByCanteenAndDate = (id,date) => {
-    return api.get(`/menus/canteen/${id}/${date}`);
+    return api.get(`/menu/canteen/${id}/${date}`);
 }
 
 export const getDailyMenuById = (id) => {
-    return api.get(`/menus/${id}`);
+    return api.get(`/menu/${id}`);
 }
 
-export const updateDailyMenu =(id,formData) => {
-    return api.put(`/menu/${id}`, formData, {
+export const getAllDailyMenus = () => {
+    return api.get('/menu/all');
+}
+
+export const updateDailyMenu =(id,params) => {
+    return api.put(`/menu/${id}`, params, {
         headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'application/json'
         }
     });
 }
 
 export const deleteDailyMenu = (id) => {
-    return api.delete(`/menus/${id}`);
+    return api.delete(`/menu/${id}`);
 }
 
 export default api;

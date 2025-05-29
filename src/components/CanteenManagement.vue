@@ -1,539 +1,442 @@
 <template>
-  <div class="canteen-management">
-    <div class="canteen-header">
-      <h2>食堂管理</h2>
-      <button class="action-button" @click="openAddModal">
-        <span>+</span> 添加食堂
-      </button>
-    </div>
-
-  <div class="table-scroll-container">
-    <table>
-      <thead>
-      <tr>
-        <th>名称</th>
-        <th>位置</th>
-        <th>联系电话</th>
-        <th>图片</th>
-        <th>操作</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-if="canteens.length === 0">
-        <td colspan="5" class="empty-state">暂无食堂数据</td>
-      </tr>
-      <tr v-for="canteen in canteens" :key="canteen.canteenId">
-        <td>{{ canteen.name }}</td>
-        <td>{{ canteen.location }}</td>
-        <td>{{ canteen.contactPhone }}</td>
-        <td>
-          <img v-if="canteen.imageUrl" :src="canteen.imageUrl" alt="食堂图片" />
-          <span v-else>无图片</span>
-        </td>
-        <td class="action-cell">
-          <button class="edit-btn" @click="openEditModal(canteen)">编辑</button>
-          <button class="delete-btn" @click="confirmDelete(canteen.canteenId)">删除</button>
-        </td>
-      </tr>
-      </tbody>
-    </table>
-  </div>
-
-    <!-- 添加/编辑食堂的模态框 -->
-    <div v-if="showModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>{{ isEditMode ? '编辑食堂' : '添加食堂' }}</h3>
-          <span class="close" @click="closeModal">&times;</span>
+    <div class="canteen-management-content">
+        <div class="page-header">
+            <h2>食堂管理</h2>
+            <el-button type="primary" @click="openAddModal" class="action-button">
+                <el-icon><Plus /></el-icon> 添加食堂
+            </el-button>
         </div>
 
-        <form @submit.prevent="handleSubmit">
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="name">名称:</label>
-              <input type="text" id="name" v-model="currentCanteen.name" class="form-control" required>
-            </div>
-            <div class="form-group">
-              <label for="description">描述:</label>
-              <textarea id="description" v-model="currentCanteen.description" class="form-control" rows="3"></textarea>
-            </div>
-            <div class="form-group">
-              <label for="location">位置:</label>
-              <input type="text" id="location" v-model="currentCanteen.location" class="form-control">
-            </div>
-            <div class="form-group">
-              <label for="openingHours">营业时间:</label>
-              <input type="text" id="openingHours" v-model="currentCanteen.openingHours" class="form-control">
-            </div>
-            <div class="form-group">
-              <label for="contactPhone">联系电话:</label>
-              <input type="text" id="contactPhone" v-model="currentCanteen.contactPhone" class="form-control">
-            </div>
-            <div class="form-group">
-              <label>图片:</label>
-              <div class="file-input-wrapper">
-                <span class="file-input-label">选择图片</span>
-                <input type="file" @change="handleFileChange">
-              </div>
-              <div class="image-preview">
-                <img v-if="isEditMode && currentCanteen.imageUrl && !selectedFile" :src="currentCanteen.imageUrl" alt="食堂图片" width="100">
-                <img v-if="previewUrl" :src="previewUrl" alt="预览图片" width="100">
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" @click="closeModal">取消</button>
-            <button type="submit" class="btn-primary">{{ isEditMode ? '更新' : '创建' }}</button>
-          </div>
-        </form>
-      </div>
+        <el-card class="canteen-table-card">
+            <template #header>
+                <div class="card-header">
+                    <h3>食堂列表</h3>
+                </div>
+            </template>
+
+            <el-table :data="canteens" style="width: 100%" v-loading="loading" max-height="600">
+                <el-table-column prop="name" label="名称" width="150" sortable></el-table-column>
+                <el-table-column prop="description" label="描述" min-width="200"></el-table-column>
+                <el-table-column prop="location" label="位置" width="150"></el-table-column>
+                <el-table-column prop="openingHours" label="营业时间" width="120"></el-table-column>
+                <el-table-column prop="contactPhone" label="联系电话" width="120"></el-table-column>
+                <el-table-column label="图片" width="100">
+                    <template #default="scope">
+                        <img v-if="scope.row.imageUrl" :src="scope.row.imageUrl" alt="食堂图片" class="canteen-image" />
+                        <span v-else>无图片</span>
+                    </template>
+                </el-table-column>
+                <el-table-column label="操作" width="180" fixed="right">
+                    <template #default="scope">
+                        <el-button size="small" @click="openEditModal(scope.row)">编辑</el-button>
+                        <el-button size="small" type="danger" @click="confirmDelete(scope.row.canteenId)">删除</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </el-card>
+
+        <el-dialog
+                v-model="showModal"
+                :title="isEditMode ? '编辑食堂' : '添加食堂'"
+                width="600px"
+                @close="closeModal"
+        >
+            <el-form :model="currentCanteen" :rules="canteenRules" ref="canteenFormRef" label-width="90px">
+                <el-form-item label="名称" prop="name" >
+                    <el-input v-model="currentCanteen.name"></el-input>
+                </el-form-item>
+                <el-form-item label="描述" prop="description">
+                    <el-input type="textarea" v-model="currentCanteen.description" :rows="3"></el-input>
+                </el-form-item>
+                <el-form-item label="位置" prop="location">
+                    <el-input v-model="currentCanteen.location"></el-input>
+                </el-form-item>
+                <el-form-item label="营业时间">
+                    <el-col :span="11">
+                        <el-form-item prop="openingTimeStart">
+                            <el-time-picker
+                                    v-model="currentCanteen.openingTimeStart"
+                                    placeholder="开始时间"
+                                    value-format="HH:mm:ss"
+                                    style="width: 100%;"
+                            ></el-time-picker>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="2" style="text-align: center;">-</el-col>
+                    <el-col :span="11">
+                        <el-form-item prop="openingTimeEnd">
+                            <el-time-picker
+                                    v-model="currentCanteen.openingTimeEnd"
+                                    placeholder="结束时间"
+                                    value-format="HH:mm:ss"
+                                    style="width: 100%;"
+                            ></el-time-picker>
+                        </el-form-item>
+                    </el-col>
+                </el-form-item>
+                <el-form-item label="联系电话" prop="contactPhone">
+                    <el-input v-model="currentCanteen.contactPhone"></el-input>
+                </el-form-item>
+                <el-form-item label="图片" prop="imageUrl">
+                    <div class="image-upload-wrapper">
+                        <input type="file" @change="handleFileChange" accept="image/*" class="file-input" />
+                        <el-button type="info" plain>选择图片</el-button>
+                    </div>
+                    <div class="image-preview">
+                        <img v-if="isEditMode && currentCanteen.imageUrl && !selectedFile" :src="currentCanteen.imageUrl" alt="食堂图片" class="preview-thumb">
+                        <img v-if="previewUrl" :src="previewUrl" alt="预览图片" class="preview-thumb">
+                    </div>
+                </el-form-item>
+            </el-form>
+
+            <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="closeModal">取消</el-button>
+          <el-button type="primary" @click="handleSubmit" :loading="saving">
+            {{ isEditMode ? '更新' : '创建' }}
+          </el-button>
+        </span>
+            </template>
+        </el-dialog>
     </div>
-  </div>
 </template>
 
-<script>
-import { getAllCanteens, createCanteen, updateCanteen, deleteCanteen } from '@/services/api';
+<script setup>
+import { reactive, ref, onMounted, onBeforeUnmount } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { Plus } from '@element-plus/icons-vue';
 
-export default {
-  name: 'CanteenManagement',
-  data() {
-    return {
-      canteens: [],
-      showModal: false,
-      isEditMode: false,
-      currentCanteen: {
-        canteenId: null,
-        name: '',
-        description: '',
-        location: '',
-        openingHours: '',
-        contactPhone: '',
-        imageUrl: ''
-      },
-      selectedFile: null,
-      previewUrl: null,
-    };
-  },
-  methods: {
-    async fetchCanteens() {
-      try {
-        const response = await getAllCanteens();
-        this.canteens = response.data;
-      } catch (error) {
-        console.error('获取食堂列表失败:', error);
-      }
-    },
-    openAddModal() {
-      this.isEditMode = false;
-      this.currentCanteen = {
-        canteenId: null,
-        name: '',
-        description: '',
-        location: '',
-        openingHours: '',
-        contactPhone: '',
-        imageUrl: ''
-      };
-      this.selectedFile = null;
-      this.previewUrl = null;
-      this.showModal = true;
-    },
-    openEditModal(canteen) {
-      this.isEditMode = true;
-      this.currentCanteen = { ...canteen };
-      this.selectedFile = null;
-      this.previewUrl = null;
-      this.showModal = true;
-    },
-    closeModal() {
-      this.showModal = false;
-    },
-    handleFileChange(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.selectedFile = file;
-        this.previewUrl = URL.createObjectURL(file);
-      } else {
-        this.selectedFile = null;
-        this.previewUrl = null;
-      }
-    },
-    async handleSubmit() {
-      const formData = new FormData();
+// Assuming these APIs are globally available or imported from a shared file
+// as per the user's instruction "你不需要import就能使用"
+// If not, you would need to import them:
+import { getAllCanteens, createCanteen, updateCanteen, deleteCanteen } from '@/services/api.js';
 
-      // 构造食堂信息对象
-      const canteenData = {
-        name: this.currentCanteen.name,
-        description: this.currentCanteen.description,
-        location: this.currentCanteen.location,
-        openingHours: this.currentCanteen.openingHours,
-        contactPhone: this.currentCanteen.contactPhone
-      };
+// Reactive data
+const loading = ref(false);
+const saving = ref(false);
+const canteens = ref([]);
+const showModal = ref(false);
+const isEditMode = ref(false);
+const currentCanteen = reactive({
+    canteenId: null,
+    name: '',
+    description: '',
+    location: '',
+    openingHours: '', // This will be the combined string for API
+    openingTimeStart: '', // New property for time picker 1
+    openingTimeEnd: '',   // New property for time picker 2
+    contactPhone: '',
+    imageUrl: '' // Existing image URL
+});
+const selectedFile = ref(null);
+const previewUrl = ref(null);
+const canteenFormRef = ref(null); // Ref for Element Plus form
 
-      // 将食堂信息作为JSON字符串添加到FormData
-      formData.append('canteen', new Blob([JSON.stringify(canteenData)], {
-        type: 'application/json'
-      }));
+// Form validation rules
+const canteenRules = reactive({
+    name: [{ required: true, message: '请输入食堂名称', trigger: 'blur' }],
+    description: [{ required: false, message: '请输入食堂描述', trigger: 'blur' }],
+    location: [{ required: false, message: '请输入食堂位置', trigger: 'blur' }],
+    openingTimeStart: [{ required: false, message: '请选择开始时间', trigger: 'change' }],
+    openingTimeEnd: [{ required: false, message: '请选择结束时间', trigger: 'change' }],
+    contactPhone: [{ required: false, message: '请输入联系电话', trigger: 'blur' }],
+});
 
-      // 如果有图片文件，添加到FormData
-      if (this.selectedFile) {
-        formData.append('image', this.selectedFile);
-      }
-
-      try {
-        if (this.isEditMode) {
-          await updateCanteen(this.currentCanteen.canteenId, formData);
-        } else {
-          await createCanteen(formData);
-        }
-        this.fetchCanteens();
-        this.closeModal();
-      } catch (error) {
-        console.error('保存食堂失败:', error.response ? error.response.data : error);
-        alert(`操作失败: ${error.response?.data?.message || error.message}`);
-      }
-    },
-    async confirmDelete(canteenId) {
-      if (confirm('确定要删除这个食堂吗？')) {
-        try {
-          await deleteCanteen(canteenId);
-          this.fetchCanteens();
-        } catch (error) {
-          console.error('删除食堂失败:', error);
-          alert(`删除失败: ${error.response?.data?.message || error.message}`);
-        }
-      }
+// Helper function: Extract error message
+const getErrorMessage = (error) => {
+    if (error.response && error.response.data && error.response.data.message) {
+        return error.response.data.message;
     }
-  },
-  mounted() {
-    this.fetchCanteens();
-  },
-  beforeUnmount() {
-    if (this.previewUrl) {
-      URL.revokeObjectURL(this.previewUrl);
+    if (error.message) {
+        return error.message;
     }
-  }
+    return '操作失败！';
 };
+
+// Methods
+const fetchCanteens = async () => {
+    loading.value = true;
+    try {
+        const response = await getAllCanteens();
+        canteens.value = response.data;
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error));
+        console.error('获取食堂列表失败:', error);
+    } finally {
+        loading.value = false;
+    }
+};
+
+const openAddModal = () => {
+    isEditMode.value = false;
+    // Reset reactive object properties
+    Object.assign(currentCanteen, {
+        canteenId: null,
+        name: '',
+        description: '',
+        location: '',
+        openingHours: '', // Reset combined string
+        openingTimeStart: '08:00:00', // Default start
+        openingTimeEnd: '22:00:00',   // Default end
+        contactPhone: '',
+        imageUrl: ''
+    });
+    selectedFile.value = null;
+    previewUrl.value = null;
+    showModal.value = true;
+    // Reset form validation state after modal opens and data is set
+    canteenFormRef.value?.resetFields();
+};
+
+const openEditModal = (canteen) => {
+    isEditMode.value = true;
+    // Assign properties from existing canteen to reactive currentCanteen
+    Object.assign(currentCanteen, { ...canteen });
+    // Parse openingHours string into two time picker values
+    const [start, end] = canteen.openingHours ? canteen.openingHours.split('-') : ['', ''];
+    currentCanteen.openingTimeStart = start ? (start.length === 5 ? start + ':00' : start) : '';
+    currentCanteen.openingTimeEnd = end ? (end.length === 5 ? end + ':00' : end) : '';
+
+    selectedFile.value = null;
+    previewUrl.value = null;
+    showModal.value = true;
+    // Reset form validation state after modal opens and data is set
+    canteenFormRef.value?.resetFields();
+};
+
+const closeModal = () => {
+    showModal.value = false;
+    // Revoke object URL when closing modal to free memory
+    if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+        previewUrl.value = null;
+    }
+};
+
+const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        selectedFile.value = file;
+        if (previewUrl.value) {
+            URL.revokeObjectURL(previewUrl.value); // Revoke previous URL if exists
+        }
+        previewUrl.value = URL.createObjectURL(file);
+    } else {
+        selectedFile.value = null;
+        if (previewUrl.value) {
+            URL.revokeObjectURL(previewUrl.value);
+        }
+        previewUrl.value = null;
+    }
+};
+
+const handleSubmit = async () => {
+    if (!canteenFormRef.value) return;
+
+    try {
+        // Construct the openingHours string before validation
+        currentCanteen.openingHours = `${currentCanteen.openingTimeStart.substring(0, 5)}-${currentCanteen.openingTimeEnd.substring(0, 5)}`;
+
+        await canteenFormRef.value.validate(); // Validate form fields (including new time fields)
+        saving.value = true;
+
+        const formData = new FormData();
+
+        // Construct canteen info object
+        const canteenData = {
+            name: currentCanteen.name,
+            description: currentCanteen.description,
+            location: currentCanteen.location,
+            openingHours: currentCanteen.openingHours, // Use the constructed string
+            contactPhone: currentCanteen.contactPhone
+        };
+
+        // Append canteen data as JSON blob
+        formData.append('canteen', new Blob([JSON.stringify(canteenData)], {
+            type: 'application/json'
+        }));
+
+        // If a new image file is selected, append it
+        if (selectedFile.value) {
+            formData.append('image', selectedFile.value);
+        } else if (isEditMode.value && currentCanteen.imageUrl) {
+            // If in edit mode and no new file selected, but there's an existing image URL,
+            // you might need to tell the backend to keep the existing image.
+            // This depends on your backend API design.
+            // For now, if no new file is selected, no 'image' field is sent,
+            // implying the backend should retain the existing one if it's an update.
+        }
+
+
+        if (isEditMode.value) {
+            await updateCanteen(currentCanteen.canteenId, formData);
+            ElMessage.success('食堂更新成功！');
+        } else {
+            await createCanteen(formData);
+            ElMessage.success('食堂创建成功！');
+        }
+        await fetchCanteens(); // Refresh list
+        closeModal();
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error));
+        console.error('保存食堂失败:', error);
+    } finally {
+        saving.value = false;
+    }
+};
+
+const confirmDelete = async (canteenId) => {
+    try {
+        await ElMessageBox.confirm('确定要删除这个食堂吗？删除后无法恢复。', '确认删除', {
+            confirmButtonText: '删除',
+            cancelButtonText: '取消',
+            type: 'warning'
+        });
+        await deleteCanteen(canteenId);
+        ElMessage.success('食堂删除成功！');
+        await fetchCanteens(); // Refresh list
+    } catch (error) {
+        if (error !== 'cancel') { // Check if it's not just a user cancellation
+            ElMessage.error(getErrorMessage(error));
+            console.error('删除食堂失败:', error);
+        } else {
+            ElMessage.info('删除已取消');
+        }
+    }
+};
+
+// Lifecycle Hooks
+onMounted(() => {
+    fetchCanteens();
+});
+
+onBeforeUnmount(() => {
+    if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
+});
 </script>
 
 <style scoped>
-.canteen-management {
-  padding: 0;
+.canteen-management-content {
+    margin: 0 auto;
+    padding: 20px;
+    max-width: 1200px; /* Consistent with menu management */
 }
 
-.canteen-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+.page-header {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.canteen-management h2 {
-  margin: 0;
-  font-size: 1.8rem;
-  color: #1f2937;
-  font-weight: 600;
+.page-header h2 {
+    font-size: 28px;
+    color: #1f2937;
+    margin: 0;
+    font-weight: 600;
 }
 
 .action-button {
-  background: linear-gradient(135deg, #42b983, #2d8f5f);
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 4px 6px rgba(45, 143, 95, 0.2);
-  transition: all 0.3s ease;
+    background-color: #409EFF; /* Consistent blue button */
+    color: white;
+    border: none;
+    border-radius: 4px; /* Consistent rounded corners */
+    padding: 10px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s ease;
 }
 
 .action-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(45, 143, 95, 0.3);
+    background-color: #66b1ff;
 }
 
-.action-button:active {
-  transform: translateY(1px);
+.canteen-table-card {
+    border-radius: 12px; /* Consistent card style */
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 24px;
 }
 
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-  border-radius: 10px;
-  overflow: hidden;
-  table-layout: fixed;
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.table-scroll-container {
-    max-height: calc(100vh - 200px); /* Adjust this value as needed based on header/footer heights */
-    overflow-y: auto; /* Enable vertical scrolling */
-    background-color: #ffffff; /* Add background for a cleaner scroll area */
-    border-radius: 10px;
+.card-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #1f2937;
+    font-weight: 600;
 }
 
-th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background-color: #f9fafb;
-  color: #4b5563;
-  font-weight: 600;
-  padding: 0.8rem 0.8rem;
-  border-bottom: 2px solid #e5e7eb;
-  text-transform: uppercase;
-  font-size: 0.8rem;
-  letter-spacing: 0.05em;
-  text-align: left;
+.canteen-image {
+    width: 80px; /* Consistent image size */
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-th:nth-child(1) { width: 25%; } /* 名称 */
-th:nth-child(2) { width: 25%; } /* 位置 */
-th:nth-child(3) { width: 20%; } /* 联系电话 */
-th:nth-child(4) { width: 15%; } /* 图片 */
-th:nth-child(5) { width: 15%; } /* 操作 */
-
-td {
-  padding: 1rem 0.8rem;
-  border-bottom: 1px solid #f3f4f6;
-  color: #1f2937;
-  vertical-align: middle;
-  text-align: left;
+/* Dialog specific styles */
+.image-upload-wrapper {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
 }
 
-tr:last-child td {
-  border-bottom: none;
-}
-
-tr:hover {
-  background-color: #f9fafb;
-}
-
-td img {
-  border-radius: 6px;
-  object-fit: cover;
-  height: 60px;
-  width: 80px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.action-cell {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  padding: 3rem;
-}
-
-.edit-btn, .delete-btn {
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  border: none;
-  font-size: 0.85rem;
-}
-
-.edit-btn {
-  background-color: #60a5fa;
-  color: white;
-}
-
-.delete-btn {
-  background-color: #ef4444;
-  color: white;
-}
-
-.edit-btn:hover {
-  background-color: #3b82f6;
-}
-
-.delete-btn:hover {
-  background-color: #dc2626;
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background-color: white;
-  border-radius: 12px;
-  padding: 0;
-  overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  animation: modal-appear 0.3s ease-out;
-  max-width: 500px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-@keyframes modal-appear {
-  from { opacity: 0; transform: translateY(-30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.modal-header {
-  background-color: #42b983;
-  color: white;
-  padding: 1rem 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.close {
-  cursor: pointer;
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-.close:hover {
-  opacity: 0.7;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.form-group {
-  margin-bottom: 1.2rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #4b5563;
-}
-
-.form-control {
-  width: 100%;
-  padding: 0.65rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  transition: all 0.2s;
-  box-sizing: border-box;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: #42b983;
-  box-shadow: 0 0 0 3px rgba(66, 185, 131, 0.2);
-}
-
-.modal-footer {
-  padding: 1rem 1.5rem;
-  background-color: #f9fafb;
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.btn-primary, .btn-secondary {
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-}
-
-.btn-primary {
-  background-color: #42b983;
-  color: white;
-}
-
-.btn-secondary {
-  background-color: #9ca3af;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #38a86d;
-}
-
-.btn-secondary:hover {
-  background-color: #6b7280;
-}
-
-.image-preview {
-  margin-top: 0.8rem;
-  position: relative;
-}
-
-.file-input-wrapper {
-  position: relative;
-  overflow: hidden;
-  display: inline-block;
-}
-
-.file-input-wrapper input[type=file] {
-  position: absolute;
-  left: 0;
-  top: 0;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-}
-
-.file-input-label {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  background-color: #e5e7eb;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: #6b7280;
-}
-
-/* 页面加载动画 */
-@keyframes fadeInUp {
-  from {
+.file-input {
+    position: absolute;
+    left: 0;
+    top: 0;
     opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
 }
 
-.canteen-management {
-  animation: fadeInUp 0.5s ease-out;
+.preview-thumb {
+    width: 100px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-top: 10px;
+    border: 1px solid #e5e7eb;
 }
 
-/* 表格行动画 */
-tbody tr {
-  transition: all 0.2s ease;
+/* Element Plus overrides for consistent button styles */
+.el-button {
+    border-radius: 4px; /* Consistent with action-button */
+}
+.el-button--primary {
+    background-color: #409EFF;
+    border-color: #409EFF;
+}
+.el-button--primary:hover {
+    background-color: #66b1ff;
+    border-color: #66b1ff;
+}
+.el-button--danger {
+    background-color: #F56C6C;
+    border-color: #F56C6C;
+}
+.el-button--danger:hover {
+    background-color: #f78989;
+    border-color: #f78989;
 }
 
-tbody tr:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  position: relative;
-  z-index: 1;
+/* Pagination wrapper for consistent centering */
+.pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
 }
 </style>

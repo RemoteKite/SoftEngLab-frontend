@@ -4,11 +4,11 @@ import Login from '@/components/Login.vue'
 import Canteens from '@/components/CanteenManagement.vue'
 import Dashboard from '@/components/Dashboard.vue'
 import Layout from '@/components/Layout.vue'
-import PublishRecipe from '@/components/PublishRecipe.vue'
 import FilterDishes from "@/components/FilterDishes.vue";
 import Feedback from "@/components/Feedback.vue";
 import Guidance from "@/components/Guidance.vue";
 import DishManagement from "@/components/DishManagement.vue";
+import MenuManagement from "@/components/MenuManagement.vue";
 
 const routes = [
     {
@@ -54,7 +54,7 @@ const routes = [
             {
                 path: 'publish',
                 name: 'Publish',
-                component: PublishRecipe,
+                component: MenuManagement,
                 meta: { title: '菜单管理' }
             },
             // {
