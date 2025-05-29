@@ -15,7 +15,7 @@
             </template>
 
             <el-table :data="canteens" style="width: 100%" v-loading="loading" max-height="600">
-                <el-table-column prop="name" label="名称" width="150" sortable></el-table-column>
+                <el-table-column prop="name" label="名称" width="150"></el-table-column>
                 <el-table-column prop="description" label="描述" min-width="200"></el-table-column>
                 <el-table-column prop="location" label="位置" width="150"></el-table-column>
                 <el-table-column prop="openingHours" label="营业时间" width="120"></el-table-column>
@@ -26,9 +26,10 @@
                         <span v-else>无图片</span>
                     </template>
                 </el-table-column>
-                <el-table-column label="操作" width="180" fixed="right">
+                <el-table-column label="操作" width="260" fixed="right">
                     <template #default="scope">
                         <el-button size="small" @click="openEditModal(scope.row)">编辑</el-button>
+                        <el-button size="small" @click="openImageModal(scope.row.canteenId)">更多图片</el-button>
                         <el-button size="small" type="danger" @click="confirmDelete(scope.row.canteenId)">删除</el-button>
                     </template>
                 </el-table-column>
@@ -42,7 +43,7 @@
                 @close="closeModal"
         >
             <el-form :model="currentCanteen" :rules="canteenRules" ref="canteenFormRef" label-width="90px">
-                <el-form-item label="名称" prop="name" >
+                <el-form-item label="名称" prop="name">
                     <el-input v-model="currentCanteen.name"></el-input>
                 </el-form-item>
                 <el-form-item label="描述" prop="description">
@@ -51,28 +52,8 @@
                 <el-form-item label="位置" prop="location">
                     <el-input v-model="currentCanteen.location"></el-input>
                 </el-form-item>
-                <el-form-item label="营业时间">
-                    <el-col :span="11">
-                        <el-form-item prop="openingTimeStart">
-                            <el-time-picker
-                                    v-model="currentCanteen.openingTimeStart"
-                                    placeholder="开始时间"
-                                    value-format="HH:mm:ss"
-                                    style="width: 100%;"
-                            ></el-time-picker>
-                        </el-form-item>
-                    </el-col>
-                    <el-col :span="2" style="text-align: center;">-</el-col>
-                    <el-col :span="11">
-                        <el-form-item prop="openingTimeEnd">
-                            <el-time-picker
-                                    v-model="currentCanteen.openingTimeEnd"
-                                    placeholder="结束时间"
-                                    value-format="HH:mm:ss"
-                                    style="width: 100%;"
-                            ></el-time-picker>
-                        </el-form-item>
-                    </el-col>
+                <el-form-item label="营业时间" prop="openingHours">
+                    <el-input v-model="currentCanteen.openingHours"></el-input>
                 </el-form-item>
                 <el-form-item label="联系电话" prop="contactPhone">
                     <el-input v-model="currentCanteen.contactPhone"></el-input>
@@ -98,49 +79,118 @@
         </span>
             </template>
         </el-dialog>
+
+        <el-dialog
+                v-model="showImageModal"
+                title="管理食堂更多图片"
+                width="800px"
+                @close="closeImageModal"
+        >
+            <div class="image-gallery-container" v-loading="imageLoading">
+                <div v-if="canteenImages.length > 0" class="image-grid">
+                    <el-card v-for="img in canteenImages" :key="img.imageId" class="image-card">
+                        <img :src="img.imageUrl" :alt="img.description || '食堂图片'" class="gallery-image" />
+                        <div class="image-info">
+                            <el-input
+                                    v-model="img.description"
+                                    placeholder="图片描述"
+                                    @blur="updateImageDescription(img.imageId, img.description)"
+                                    :disabled="imageUpdating"
+                            ></el-input>
+                            <el-button type="danger" size="small" :icon="Delete" circle @click="confirmDeleteCanteenImage(img.imageId)"></el-button>
+                        </div>
+                    </el-card>
+                </div>
+                <el-empty v-else description="暂无更多图片" :image-size="100"></el-empty>
+
+                <el-divider>上传新图片</el-divider>
+                <div class="new-image-upload-section">
+                    <div class="file-input-group">
+                        <div class="image-upload-wrapper">
+                            <input type="file" @change="handleNewImageFileChange" accept="image/*" class="file-input" />
+                            <el-button type="info" plain>选择图片</el-button>
+                        </div>
+                        <el-input
+                                v-model="newImageDescription"
+                                placeholder="图片介绍文字 (可选)"
+                                class="image-description-input"
+                        ></el-input>
+                    </div>
+                    <div class="image-preview" v-if="newImagePreviewUrl">
+                        <img :src="newImagePreviewUrl" alt="新图片预览" class="preview-thumb">
+                    </div>
+                    <el-button
+                            type="primary"
+                            :icon="Upload"
+                            @click="uploadNewCanteenImage"
+                            :loading="uploadingImage"
+                            :disabled="!newSelectedImageFile"
+                            class="upload-button"
+                    >
+                        上传图片
+                    </el-button>
+                </div>
+            </div>
+        </el-dialog>
     </div>
 </template>
 
 <script setup>
 import { reactive, ref, onMounted, onBeforeUnmount } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus } from '@element-plus/icons-vue';
+import { Plus, Delete, Upload } from '@element-plus/icons-vue';
 
 // Assuming these APIs are globally available or imported from a shared file
-// as per the user's instruction "你不需要import就能使用"
 // If not, you would need to import them:
-import { getAllCanteens, createCanteen, updateCanteen, deleteCanteen } from '@/services/api.js';
+import {
+    getAllCanteens,
+    createCanteen,
+    updateCanteen,
+    deleteCanteen,
+    createCanteenImage, // New
+    getCanteenImageByCanteen, // New
+    deleteCanteenImage, // New
+    updateCanteenImageDescription // New
+} from '@/services/api.js'; // Assuming your API file path
 
 // Reactive data
-const loading = ref(false);
-const saving = ref(false);
-const canteens = ref([]);
-const showModal = ref(false);
-const isEditMode = ref(false);
-const currentCanteen = reactive({
+const loading = ref(false); // Table loading state
+const saving = ref(false); // Add/edit canteen save state
+const canteens = ref([]); // Canteen list data
+const showModal = ref(false); // Add/edit canteen modal display state
+const isEditMode = ref(false); // Is in edit mode
+const currentCanteen = reactive({ // Current canteen data being edited/added
     canteenId: null,
     name: '',
     description: '',
     location: '',
-    openingHours: '', // This will be the combined string for API
-    openingTimeStart: '', // New property for time picker 1
-    openingTimeEnd: '',   // New property for time picker 2
+    openingHours: '',
     contactPhone: '',
     imageUrl: '' // Existing image URL
 });
-const selectedFile = ref(null);
-const previewUrl = ref(null);
-const canteenFormRef = ref(null); // Ref for Element Plus form
+const selectedFile = ref(null); // File selected when adding/editing canteen
+const previewUrl = ref(null); // File preview URL when adding/editing canteen
+const canteenFormRef = ref(null); // Reference to Element Plus form
 
 // Form validation rules
 const canteenRules = reactive({
     name: [{ required: true, message: '请输入食堂名称', trigger: 'blur' }],
-    description: [{ required: false, message: '请输入食堂描述', trigger: 'blur' }],
-    location: [{ required: false, message: '请输入食堂位置', trigger: 'blur' }],
-    openingTimeStart: [{ required: false, message: '请选择开始时间', trigger: 'change' }],
-    openingTimeEnd: [{ required: false, message: '请选择结束时间', trigger: 'change' }],
-    contactPhone: [{ required: false, message: '请输入联系电话', trigger: 'blur' }],
+    description: [{ required: true, message: '请输入食堂描述', trigger: 'blur' }],
+    location: [{ required: true, message: '请输入食堂位置', trigger: 'blur' }],
+    openingHours: [{ required: true, message: '请输入营业时间', trigger: 'blur' }],
+    contactPhone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
 });
+
+// More Images Management Modal related data
+const showImageModal = ref(false); // More images modal display state
+const currentCanteenIdForImages = ref(null); // Canteen ID for which images are currently being managed
+const canteenImages = ref([]); // List of more images for the current canteen
+const imageLoading = ref(false); // More images loading state
+const newSelectedImageFile = ref(null); // New image file to upload
+const newImagePreviewUrl = ref(null); // New image preview URL
+const newImageDescription = ref(''); // New image description text
+const uploadingImage = ref(false); // New image upload state
+const imageUpdating = ref(false); // Image description update state
 
 // Helper function: Extract error message
 const getErrorMessage = (error) => {
@@ -154,6 +204,8 @@ const getErrorMessage = (error) => {
 };
 
 // Methods
+
+// Fetch canteen list
 const fetchCanteens = async () => {
     loading.value = true;
     try {
@@ -167,6 +219,7 @@ const fetchCanteens = async () => {
     }
 };
 
+// Open add canteen modal
 const openAddModal = () => {
     isEditMode.value = false;
     // Reset reactive object properties
@@ -175,35 +228,36 @@ const openAddModal = () => {
         name: '',
         description: '',
         location: '',
-        openingHours: '', // Reset combined string
-        openingTimeStart: '08:00:00', // Default start
-        openingTimeEnd: '22:00:00',   // Default end
+        openingHours: '',
         contactPhone: '',
         imageUrl: ''
     });
     selectedFile.value = null;
+    if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
     previewUrl.value = null;
     showModal.value = true;
     // Reset form validation state after modal opens and data is set
     canteenFormRef.value?.resetFields();
 };
 
+// Open edit canteen modal
 const openEditModal = (canteen) => {
     isEditMode.value = true;
     // Assign properties from existing canteen to reactive currentCanteen
     Object.assign(currentCanteen, { ...canteen });
-    // Parse openingHours string into two time picker values
-    const [start, end] = canteen.openingHours ? canteen.openingHours.split('-') : ['', ''];
-    currentCanteen.openingTimeStart = start ? (start.length === 5 ? start + ':00' : start) : '';
-    currentCanteen.openingTimeEnd = end ? (end.length === 5 ? end + ':00' : end) : '';
-
     selectedFile.value = null;
+    if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
     previewUrl.value = null;
     showModal.value = true;
     // Reset form validation state after modal opens and data is set
     canteenFormRef.value?.resetFields();
 };
 
+// Close add/edit canteen modal
 const closeModal = () => {
     showModal.value = false;
     // Revoke object URL when closing modal to free memory
@@ -213,6 +267,7 @@ const closeModal = () => {
     }
 };
 
+// Handle file selection for add/edit canteen
 const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -230,14 +285,12 @@ const handleFileChange = (event) => {
     }
 };
 
+// Submit add/edit canteen form
 const handleSubmit = async () => {
     if (!canteenFormRef.value) return;
 
     try {
-        // Construct the openingHours string before validation
-        currentCanteen.openingHours = `${currentCanteen.openingTimeStart.substring(0, 5)}-${currentCanteen.openingTimeEnd.substring(0, 5)}`;
-
-        await canteenFormRef.value.validate(); // Validate form fields (including new time fields)
+        await canteenFormRef.value.validate(); // Validate form fields
         saving.value = true;
 
         const formData = new FormData();
@@ -247,8 +300,9 @@ const handleSubmit = async () => {
             name: currentCanteen.name,
             description: currentCanteen.description,
             location: currentCanteen.location,
-            openingHours: currentCanteen.openingHours, // Use the constructed string
+            openingHours: currentCanteen.openingHours,
             contactPhone: currentCanteen.contactPhone
+            // imageUrl is handled separately as a file or kept if not changed
         };
 
         // Append canteen data as JSON blob
@@ -285,6 +339,7 @@ const handleSubmit = async () => {
     }
 };
 
+// Confirm canteen deletion
 const confirmDelete = async (canteenId) => {
     try {
         await ElMessageBox.confirm('确定要删除这个食堂吗？删除后无法恢复。', '确认删除', {
@@ -305,14 +360,145 @@ const confirmDelete = async (canteenId) => {
     }
 };
 
+// More Images Management Modal related methods
+
+// Open more images modal
+const openImageModal = async (canteenId) => {
+    currentCanteenIdForImages.value = canteenId;
+    showImageModal.value = true;
+    await fetchCanteenImages(canteenId);
+};
+
+// Fetch more images for the canteen
+const fetchCanteenImages = async (canteenId) => {
+    imageLoading.value = true;
+    try {
+        const response = await getCanteenImageByCanteen(canteenId);
+        canteenImages.value = response.data;
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error));
+        console.error('获取食堂图片失败:', error);
+    } finally {
+        imageLoading.value = false;
+    }
+};
+
+// Close more images modal
+const closeImageModal = () => {
+    showImageModal.value = false;
+    currentCanteenIdForImages.value = null;
+    canteenImages.value = [];
+    newSelectedImageFile.value = null;
+    if (newImagePreviewUrl.value) {
+        URL.revokeObjectURL(newImagePreviewUrl.value);
+    }
+    newImagePreviewUrl.value = null;
+    newImageDescription.value = ''; // Clear new image description
+};
+
+// Handle new image file selection
+const handleNewImageFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        newSelectedImageFile.value = file;
+        if (newImagePreviewUrl.value) {
+            URL.revokeObjectURL(newImagePreviewUrl.value);
+        }
+        newImagePreviewUrl.value = URL.createObjectURL(file);
+    } else {
+        newSelectedImageFile.value = null;
+        if (newImagePreviewUrl.value) {
+            URL.revokeObjectURL(newImagePreviewUrl.value);
+        }
+        newImagePreviewUrl.value = null;
+    }
+};
+
+// Upload new image
+const uploadNewCanteenImage = async () => {
+    if (!newSelectedImageFile.value || !currentCanteenIdForImages.value) {
+        ElMessage.warning('请选择一个图片');
+        return;
+    }
+
+    uploadingImage.value = true;
+    try {
+        const formData = new FormData();
+        formData.append('image', newSelectedImageFile.value);
+        // Append the new image description if available
+        if (newImageDescription.value) {
+            formData.append('description', newImageDescription.value);
+        }
+
+        await createCanteenImage(currentCanteenIdForImages.value, formData);
+        ElMessage.success('图片上传成功');
+        newSelectedImageFile.value = null;
+        if (newImagePreviewUrl.value) {
+            URL.revokeObjectURL(newImagePreviewUrl.value);
+        }
+        newImagePreviewUrl.value = null;
+        newImageDescription.value = ''; // Clear new image description after upload
+        await fetchCanteenImages(currentCanteenIdForImages.value); // Refresh image list
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error));
+        console.error('上传图片失败:', error);
+    } finally {
+        uploadingImage.value = false;
+    }
+};
+
+// Confirm deletion of canteen image
+const confirmDeleteCanteenImage = async (imageId) => {
+    try {
+        await ElMessageBox.confirm('确定要删除这个图片吗？删除后无法恢复。', '确认删除', {
+            confirmButtonText: '删除',
+            cancelButtonText: '取消',
+            type: 'warning'
+        });
+        await deleteCanteenImage(imageId);
+        ElMessage.success('图片删除成功');
+        await fetchCanteenImages(currentCanteenIdForImages.value); // Refresh image list
+    } catch (error) {
+        if (error !== 'cancel') {
+            ElMessage.error(getErrorMessage(error));
+            console.error('删除图片失败:', error);
+        } else {
+            ElMessage.info('删除已取消');
+        }
+    }
+};
+
+// Update image description
+const updateImageDescription = async (imageId, description) => {
+    imageUpdating.value = true;
+    try {
+        // API requires application/x-www-form-urlencoded, so pass an object directly
+        // axios will automatically serialize it to form-urlencoded
+        await updateCanteenImageDescription(imageId, { updatedDescription: description });
+        ElMessage.success('成功更新图片描述');
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error));
+        console.error('更新图片描述失败:', error);
+        // If update fails, might need to re-fetch image list or rollback description
+        await fetchCanteenImages(currentCanteenIdForImages.value);
+    } finally {
+        imageUpdating.value = false;
+    }
+};
+
+
 // Lifecycle Hooks
 onMounted(() => {
     fetchCanteens();
 });
 
 onBeforeUnmount(() => {
+    // Revoke all preview URLs before component unmounts
     if (previewUrl.value) {
         URL.revokeObjectURL(previewUrl.value);
+    }
+    if (newImagePreviewUrl.value) {
+        URL.revokeObjectURL(newImagePreviewUrl.value);
     }
 });
 </script>
@@ -438,5 +624,73 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: center;
     margin-top: 24px;
+}
+
+/* More images management modal styles */
+.image-gallery-container {
+    padding: 10px;
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.image-card {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+}
+
+.gallery-image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.image-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.image-info .el-input {
+    flex-grow: 1;
+}
+
+.new-image-upload-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.file-input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1; /* Allows it to take available space */
+}
+
+.image-description-input {
+    max-width: 250px; /* Limit width of the input field */
+}
+
+.new-image-upload-section .preview-thumb {
+    margin-top: 0; /* Override default margin */
+}
+
+.upload-button {
+    margin-left: auto; /* Push button to the right */
 }
 </style>

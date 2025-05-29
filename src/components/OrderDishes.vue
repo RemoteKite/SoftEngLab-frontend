@@ -80,7 +80,7 @@
                         :class="{ 'out-of-stock': !dish.available }"
                 >
                     <div class="dish-image">
-                        <img :src="dish.imageUrl || 'https://placehold.co/300x200/cccccc/333333?text=No+Image'" :alt="dish.name" />
+                        <img :src="dish.imageUrl || 'src/assets/noImg.svg'" :alt="dish.name" />
                     </div>
 
                     <div class="dish-info">

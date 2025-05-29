@@ -149,4 +149,36 @@ export const deleteDailyMenu = (id) => {
     return api.delete(`/menu/${id}`);
 }
 
+//Canteen Image
+export const createCanteenImage = (id,formData) => {
+    return api.post(`canteen-images/canteen/${id}`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+};
+
+export const getCanteenImageById = (id) => {
+    return api.get(`/canteen-images/${id}`);
+};
+
+export const getCanteenImageByCanteen = (id) => {
+    return api.get(`/canteen-images/canteen/${id}`);
+}
+
+export const deleteCanteenImage = (id) => {
+    return api.delete(`/canteen-images/${id}`);
+};
+
+export const updateCanteenImageDescription = (id, params) => {
+    return api.put(`/canteen-images/${id}/description`, params, {
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+    })
+}
+
+
+
+
 export default api;
