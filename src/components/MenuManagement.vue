@@ -491,6 +491,9 @@ const resetForm = () => {
 
 const getFilteredDishes = () => {
     let dishes = dishList.value;
+    if (menuForm.canteenId) {
+        dishes = dishes.filter(dish => dish.canteenId === menuForm.canteenId);
+    }
     if (dishSearchKeyword.value) {
         dishes = dishes.filter(dish =>
             dish.name.includes(dishSearchKeyword.value) ||
