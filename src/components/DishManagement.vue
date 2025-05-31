@@ -130,7 +130,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted, onBeforeUnmount } from 'vue'; // Added 'computed'
+import {reactive, ref, computed, onMounted, onBeforeUnmount, nextTick} from 'vue'; // Added 'computed'
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'; // Added Refresh and Search icons
 
@@ -162,7 +162,7 @@ const dishFormRef = ref(null); // Ref for Element Plus form
 const dishNameFilter = ref('');
 const canteenFilterId = ref('');
 const currentPage = ref(1);
-const pageSize = ref(10); // You can adjust this value
+const pageSize = ref(5); // You can adjust this value
 const totalFilteredDishes = ref(0);
 
 // Form validation rules
@@ -257,29 +257,68 @@ const fetchDishes = async () => {
     }
 };
 
-const openAddModal = () => {
+const openAddModal = async () => {
     isEditMode.value = false;
+
+    // 1. 先重置表单验证状态
+    dishFormRef.value?.resetFields();
+    await nextTick(); // 确保DOM更新完成
+
+    // 2. 清空响应式数据
     Object.assign(currentDish, {
         dishId: null,
-        canteenId: '',
+        canteenId: null,  // 改为null更符合语义
         name: '',
-        price: null,
+        price: null,      // 保持null而不是0，便于验证必填
         description: '',
         imageUrl: ''
     });
+
+    // 3. 重置文件相关状态
     selectedFile.value = null;
+    if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value); // 安全释放内存
+    }
     previewUrl.value = null;
+
+    // 4. 显示模态框
     showModal.value = true;
-    dishFormRef.value?.resetFields();
+
+    // 5. 再次确保表单状态重置（针对某些UI库的特殊情况）
+    await nextTick();
+    dishFormRef.value?.clearValidate(); // 比resetFields更轻量
 };
 
-const openEditModal = (dish) => {
+const openEditModal = async (dish) => {
     isEditMode.value = true;
-    Object.assign(currentDish, { ...dish });
+    // 1. 先完全重置表单
+    if (dishFormRef.value) {
+        dishFormRef.value.resetFields();
+        await nextTick(); // 确保重置完成
+    }
+    // 2. 清空当前数据
+    Object.keys(currentDish).forEach(key => {
+        currentDish[key] = key === 'dishId' ? null : '';
+    });
+    // 3. 等待一个tick确保清空完成
+    await nextTick();
+    // 4. 填充新数据
+    const newData = JSON.parse(JSON.stringify(dish));
+    Object.keys(newData).forEach(key => {
+        if (key in currentDish) {
+            currentDish[key] = newData[key];
+        }
+    });
+    // 5. 处理文件相关状态
     selectedFile.value = null;
+    if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
     previewUrl.value = null;
+    // 6. 最后显示模态框
     showModal.value = true;
-    dishFormRef.value?.resetFields();
+    // 7. 确保UI更新完成
+    await nextTick();
 };
 
 const closeModal = () => {

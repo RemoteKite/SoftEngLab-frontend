@@ -144,7 +144,7 @@ import {
 
 const router = useRouter()
 
-// 用户信息 - 从父组件或Pinia获取
+// 用户信息
 const userInfo = reactive({
   username: '管理员'
 })

@@ -254,29 +254,32 @@ const fetchMenuDishes = async () => {
     loading.value = true;
     try {
         const response = await getDailyMenusByCanteenAndDate(filters.canteenId, filters.reservationDate);
-        const dishesFromMenus = [];
-        const selectedTime = filters.reservationTime; // HH:mm:ss format
+        const selectedTime = filters.reservationTime;
+        const dishMap = new Map(); // 使用Map对象根据dishId去重
 
         response.data.forEach(menu => {
-            // Check if the reservationTime falls within the menu's startTime and endTime
-            const menuStartTime = menu.startTime; // HH:mm:ss
-            const menuEndTime = menu.endTime;   // HH:mm:ss
-
-            // Simple string comparison for HH:mm:ss works if times are always 24-hour and padded
-            if (selectedTime >= menuStartTime && selectedTime <= menuEndTime) {
-                if (Array.isArray(menu.dishes)) {
-                    menu.dishes.forEach(dish => {
-                        dishesFromMenus.push({ ...dish, available: true }); // Assume available for now
-                    });
-                }
+            if (selectedTime >= menu.startTime && selectedTime <= menu.endTime) {
+                menu.dishes?.forEach(dish => {
+                    if (!dishMap.has(dish.dishId)) {
+                        dishMap.set(dish.dishId, {
+                            ...dish,
+                            available: true,
+                        });
+                    }
+                });
             }
         });
-        dailyMenuDishes.value = dishesFromMenus;
 
-        ElMessage.success('菜品数据加载完成');
+        dailyMenuDishes.value = Array.from(dishMap.values());
+
+        ElMessage.success(`已加载 ${dailyMenuDishes.value.length} 个菜品`);
     } catch (error) {
         ElMessage.error(getErrorMessage(error));
-        console.error('加载菜品失败:', error);
+        console.error('加载菜品失败:', {
+            error,
+            filters,
+            timestamp: new Date().toISOString()
+        });
     } finally {
         loading.value = false;
     }

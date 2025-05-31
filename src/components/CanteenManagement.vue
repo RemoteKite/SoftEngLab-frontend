@@ -14,8 +14,8 @@
                 </div>
             </template>
 
-            <el-table :data="canteens" style="width: 100%" v-loading="loading" max-height="600">
-                <el-table-column prop="name" label="名称" width="150"></el-table-column>
+            <el-table :data="PagedCanteens" style="width: 100%" v-loading="loading" max-height="600">
+                <el-table-column prop="name" label="名称" width="150" sortable></el-table-column>
                 <el-table-column prop="description" label="描述" min-width="200"></el-table-column>
                 <el-table-column prop="location" label="位置" width="150"></el-table-column>
                 <el-table-column prop="openingHours" label="营业时间" width="120"></el-table-column>
@@ -34,6 +34,16 @@
                     </template>
                 </el-table-column>
             </el-table>
+
+            <div class="pagination-wrapper">
+                <el-pagination
+                        v-model:current-page="currentPage"
+                        :page-size="pageSize"
+                        :total="totalCanteens"
+                        layout="total, prev, pager, next, jumper"
+                        @current-change="handlePageChange"
+                />
+            </div>
         </el-card>
 
         <el-dialog
@@ -136,7 +146,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, onBeforeUnmount } from 'vue';
+import {reactive, ref, onMounted, onBeforeUnmount, computed, nextTick} from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Delete, Upload } from '@element-plus/icons-vue';
 
@@ -171,6 +181,10 @@ const currentCanteen = reactive({ // Current canteen data being edited/added
 const selectedFile = ref(null); // File selected when adding/editing canteen
 const previewUrl = ref(null); // File preview URL when adding/editing canteen
 const canteenFormRef = ref(null); // Reference to Element Plus form
+
+const currentPage = ref(1);
+const pageSize = ref(3); // You can adjust this value
+const totalCanteens = ref(0);
 
 // Form validation rules
 const canteenRules = reactive({
@@ -220,9 +234,14 @@ const fetchCanteens = async () => {
 };
 
 // Open add canteen modal
-const openAddModal = () => {
+const openAddModal = async () => {
     isEditMode.value = false;
-    // Reset reactive object properties
+
+    // 先重置表单验证
+    canteenFormRef.value?.resetFields();
+    await nextTick();
+
+    // 再清空数据
     Object.assign(currentCanteen, {
         canteenId: null,
         name: '',
@@ -232,29 +251,54 @@ const openAddModal = () => {
         contactPhone: '',
         imageUrl: ''
     });
+
+    // 清除文件相关状态
     selectedFile.value = null;
     if (previewUrl.value) {
         URL.revokeObjectURL(previewUrl.value);
+        previewUrl.value = null;
     }
-    previewUrl.value = null;
+
     showModal.value = true;
-    // Reset form validation state after modal opens and data is set
-    canteenFormRef.value?.resetFields();
 };
 
-// Open edit canteen modal
-const openEditModal = (canteen) => {
+const openEditModal = async (canteen) => {
     isEditMode.value = true;
-    // Assign properties from existing canteen to reactive currentCanteen
-    Object.assign(currentCanteen, { ...canteen });
+
+    // 1. 先完全重置表单
+    if (canteenFormRef.value) {
+        canteenFormRef.value.resetFields();
+        await nextTick(); // 确保重置完成
+    }
+
+    // 2. 清空当前数据
+    Object.keys(currentCanteen).forEach(key => {
+        currentCanteen[key] = key === 'canteenId' ? null : '';
+    });
+
+    // 3. 等待一个tick确保清空完成
+    await nextTick();
+
+    // 4. 填充新数据
+    const newData = JSON.parse(JSON.stringify(canteen));
+    Object.keys(newData).forEach(key => {
+        if (key in currentCanteen) {
+            currentCanteen[key] = newData[key];
+        }
+    });
+
+    // 5. 处理文件相关状态
     selectedFile.value = null;
     if (previewUrl.value) {
         URL.revokeObjectURL(previewUrl.value);
     }
     previewUrl.value = null;
+
+    // 6. 最后显示模态框
     showModal.value = true;
-    // Reset form validation state after modal opens and data is set
-    canteenFormRef.value?.resetFields();
+
+    // 7. 确保UI更新完成
+    await nextTick();
 };
 
 // Close add/edit canteen modal
@@ -484,6 +528,18 @@ const updateImageDescription = async (imageId, description) => {
     } finally {
         imageUpdating.value = false;
     }
+};
+
+const PagedCanteens = computed(() => {
+    const start = (currentPage.value - 1) * pageSize.value;
+    const end = start + pageSize.value;
+    totalCanteens.value = canteens.value.length; // Update total for pagination
+    return canteens.value.slice(start, end);
+});
+
+
+const handlePageChange = (page) => {
+    currentPage.value = page;
 };
 
 
