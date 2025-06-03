@@ -60,7 +60,7 @@
           </el-menu-item>
           <el-menu-item index="/guidance">
             <el-icon><FirstAidKit /></el-icon>
-            <span>健康饮食指导(未完成)</span>
+            <span>健康饮食指导</span>
           </el-menu-item>
           <el-menu-item index="/users">
             <el-icon><User /></el-icon>
