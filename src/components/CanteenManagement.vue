@@ -189,10 +189,10 @@ const totalCanteens = ref(0);
 // Form validation rules
 const canteenRules = reactive({
     name: [{ required: true, message: '请输入食堂名称', trigger: 'blur' }],
-    description: [{ required: true, message: '请输入食堂描述', trigger: 'blur' }],
+    description: [{ required: false, message: '请输入食堂描述', trigger: 'blur' }],
     location: [{ required: true, message: '请输入食堂位置', trigger: 'blur' }],
     openingHours: [{ required: true, message: '请输入营业时间', trigger: 'blur' }],
-    contactPhone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
+    contactPhone: [{ required: false, message: '请输入联系电话', trigger: 'blur' }],
 });
 
 // More Images Management Modal related data
