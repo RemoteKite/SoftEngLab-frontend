@@ -192,7 +192,43 @@ export const showAllUsers = () => {
     return api.get('/users');
 };
 
+export const getAllDietaryTags = () => {
+    return api.get('/dietary-tags');
+};
 
+export const createDietaryTag = (params) => {
+    return api.post('/dietary-tags', params);
+};
 
+export const getDietaryTagById = (id) => {
+    return api.get(`/dietary-tags/${id}`);
+};
+
+export const updateDietaryTag = (id, params) => {
+    return api.put(`/dietary-tags/${id}`, params);
+};
+
+export const deleteDietaryTag = (id) => {
+    return api.delete(`/dietary-tags/${id}`);
+};
+export const getAllAllergens = () => {
+    return api.get('/allergens');
+};
+
+export const createAllergen = (params) => {
+    return api.post('/allergens', params);
+};
+
+export const getAllergenById = (id) => {
+    return api.get(`/allergens/${id}`);
+};
+
+export const updateAllergen = (id, params) => {
+    return api.put(`/allergens/${id}`, params);
+};
+
+export const deleteAllergen = (id) => {
+    return api.delete(`/allergens/${id}`);
+};
 
 export default api;

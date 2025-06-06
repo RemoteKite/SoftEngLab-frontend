@@ -9,6 +9,8 @@ import Guidance from "@/components/Guidance.vue";
 import DishManagement from "@/components/DishManagement.vue";
 import MenuManagement from "@/components/MenuManagement.vue";
 import Register from "@/components/Register.vue";
+import CreateTag   from "@/components/CreateTag.vue";
+import AllergenTag from "@/components/AllergenTag.vue";
 
 const routes = [
     {
@@ -21,10 +23,6 @@ const routes = [
             hideLayout: true
         }
     },
-    // {
-    //     path: '/',
-    //     redirect: '/login' // 默认重定向到登录页
-    // },
     {
         path: '/',
         redirect: '/dashboard'
@@ -57,24 +55,6 @@ const routes = [
                 component: MenuManagement,
                 meta: { title: '菜单管理' }
             },
-            // {
-            //     path: 'orders',
-            //     name: 'Orders',
-            //     component: () => import('@/views/Orders.vue'),
-            //     meta: { title: '订单管理' }
-            // },
-            // {
-            //     path: 'users',
-            //     name: 'Users',
-            //     component: () => import('@/views/Users.vue'),
-            //     meta: { title: '用户管理' }
-            // },
-            // {
-            //     path: 'reports',
-            //     name: 'Reports',
-            //     component: () => import('@/views/Reports.vue'),
-            //     meta: { title: '数据报表' }
-            // }
             {
                 path: 'feedback',
                 name: 'Feedback',
@@ -92,6 +72,18 @@ const routes = [
                 name: 'Orders',
                 component: () => import('@/components/OrderDishes.vue'),
                 meta: { title: '预定餐品' }
+            },
+            {
+                path: 'dietary-tags',
+                name: 'DietaryTags',
+                component: CreateTag,
+                meta: { title: '创建标签' }
+            },
+            {
+                path: 'allergens',
+                name: 'Allergens',
+                component: AllergenTag,
+                meta: { title: '创建标签' }
             }
         ]
     },

@@ -66,6 +66,14 @@
             <el-icon><User /></el-icon>
             <span>用户管理(未完成)</span>
           </el-menu-item>
+          <el-menu-item index="/dietary-tags">
+            <el-icon><User /></el-icon>
+            <span>饮食标签</span>
+          </el-menu-item>
+          <el-menu-item index="/allergens">
+            <el-icon><User /></el-icon>
+            <span>过敏原标签</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
