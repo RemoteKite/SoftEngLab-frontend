@@ -178,6 +178,20 @@ export const updateCanteenImageDescription = (id, params) => {
     })
 }
 
+//注册功能
+export const registerUser = (params) => {
+    return api.post('/auth/register', params, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+};
+
+//用户管理
+export const showAllUsers = () => {
+    return api.get('/users');
+};
+
 
 
 

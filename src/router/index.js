@@ -8,6 +8,7 @@ import Feedback from "@/components/Feedback.vue";
 import Guidance from "@/components/Guidance.vue";
 import DishManagement from "@/components/DishManagement.vue";
 import MenuManagement from "@/components/MenuManagement.vue";
+import Register from "@/components/Register.vue";
 
 const routes = [
     {
@@ -91,8 +92,18 @@ const routes = [
                 name: 'Orders',
                 component: () => import('@/components/OrderDishes.vue'),
                 meta: { title: '预定餐品' }
-            },
+            }
         ]
+    },
+    {
+        path: '/register',
+        name: 'Register',
+        component: Register,
+        meta: {
+            requiresAuth: false,
+            title: '注册',
+            hideLayout: true
+        }
     }
 
 ]
@@ -132,9 +143,9 @@ router.beforeEach((to, from, next) => {
     // 检查是否需要登录
     const token = localStorage.getItem('token')
 
-    if (to.path !== '/login' && !token) {
+    if ((to.path !== '/login')&&(to.path!=='/register') && !token) {
         next('/login')
-    } else if (to.path === '/login' && token) {
+    } else if ((to.path === '/login'||to.path==='/register') && token) {
         next('/dashboard')
     } else {
         next()
