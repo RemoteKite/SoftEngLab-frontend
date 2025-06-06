@@ -23,7 +23,7 @@
                 <el-form-item prop="username">
                     <el-input
                             v-model="registerForm.username"
-                            placeholder="请输入用户名"
+                            placeholder="请输入用户名(至少3位)"
                             :prefix-icon="User"
                             clearable
                             @keyup.enter="handleRegister"
