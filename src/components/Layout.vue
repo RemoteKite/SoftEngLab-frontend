@@ -54,6 +54,10 @@
             <el-icon><Calendar /></el-icon>
             <span>预定餐品</span>
           </el-menu-item>
+          <el-menu-item index="/order-management">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>订单管理</span>
+          </el-menu-item>
           <el-menu-item index="/feedback">
             <el-icon><ChatDotRound /></el-icon>
             <span>评价与反馈(未完成)</span>

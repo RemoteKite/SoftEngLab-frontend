@@ -231,4 +231,45 @@ export const deleteAllergen = (id) => {
     return api.delete(`/allergens/${id}`);
 };
 
+export const getAllOrders = (params) =>
+{
+    return api.get('/orders', {params});
+};
+
+export const getOrderById = (id) => {
+    return api.get(`/orders/${id}`);
+};
+
+export const updateOrderStatus = (id, status) => {
+    return api.put(`/orders/${id}/status`, { status });
+};
+
+export const deleteOrder = (id) => {
+    return api.delete(`/orders/${id}`);
+};
+
+export const cancelOrder = (id) => {
+    return api.post(`/orders/${id}/cancel`);
+};
+
+export const getBanquetHalls = () => {
+    return api.get('/banquet/halls');
+};
+
+export const getBookingAvailability = (params) => {
+    return api.get('/banquet/availability', { params });
+};
+
+export const createBooking = (bookingData) => {
+    return api.post('/banquet/bookings', bookingData);
+};
+
+export const updateBookingStatus = (bookingId, status) => {
+    return api.put(`/banquet/bookings/${bookingId}/status`, { status });
+};
+
+export const cancelBooking = (bookingId) => {
+    return api.delete(`/banquet/bookings/${bookingId}`);
+};
+
 export default api;

@@ -74,6 +74,18 @@ const routes = [
                 meta: { title: '预定餐品' }
             },
             {
+                path: 'order-management',
+                name: 'OrderManagement',
+                component: () => import('@/components/OrderManagement.vue'), // 假设组件放在components目录
+                meta: { title: '订单管理' }
+            },
+            {
+                path: 'banquet',
+                name: 'Banquet',
+                component: () => import('@/components/BanquetBooking.vue'), // 假设组件放在components目录
+                meta: { title: '宴会预定' }
+            },
+            {
                 path: 'dietary-tags',
                 name: 'DietaryTags',
                 component: CreateTag,
