@@ -361,7 +361,7 @@ export const getRoomsByCanteenId = (canteenId) => {
 };
 
 export const createBanquet = (params) => {
-    return api.post('/banquets', params, {
+    return api.post('/banquet', params, {
         headers: {
             'Content-Type': 'application/json'
         }
@@ -369,15 +369,15 @@ export const createBanquet = (params) => {
 };
 
 export const getBanquetById = (id) => {
-    return api.get(`/banquets/${id}`);
+    return api.get(`/banquet/${id}`);
 };
 
 export const getAllBanquets = () => {
-    return api.get('/banquets');
+    return api.get('/banquet');
 };
 
 export const updateBanquet = (id, params) => {
-    return api.put(`/banquets/${id}`, params, {
+    return api.put(`/banquet/${id}`, params, {
         headers: {
             'Content-Type': 'application/json'
         }
@@ -385,16 +385,20 @@ export const updateBanquet = (id, params) => {
 };
 
 export const deleteBanquet = (id) => {
-    return api.delete(`/banquets/${id}`);
+    return api.delete(`/banquet/${id}`);
 };
 
 export const getBanquetsByCanteenId = (canteenId) => {
-    return api.get(`/banquets/canteen/${canteenId}`);
+    return api.get(`/banquet/canteen/${canteenId}`);
 };
 
 export const getBanquetsByCanteenIdByUserId = (userId) => {
-    return api.get(`/banquets/canteen/user/${userId}`);
+    return api.get(`/banquet/canteen/user/${userId}`);
 };
+
+export const getBanquetsByCurrentUser = () => {
+    return api.get('/banquet/current-user');
+}
 
 export const updateBanquetStatus = (id, status) => {
     return api.put(`/banquet/${id}/status`, null, { // 注意：后端是 /api/banquet/{id}/status，这里需要确保路径正确
@@ -405,7 +409,7 @@ export const updateBanquetStatus = (id, status) => {
 };
 
 export const cancelBanquet = (id) => {
-    return api.post(`/banquets/${id}/cancel`);
+    return api.put(`/banquet/${id}/cancel`);
 };
 
 export const getAllUsers = () => {

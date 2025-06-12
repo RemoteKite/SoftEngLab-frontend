@@ -68,6 +68,10 @@
           </el-menu-item>
             <el-menu-item index="/banquet">
                 <el-icon><Calendar /></el-icon>
+                <span>宴会预约</span>
+            </el-menu-item>
+            <el-menu-item index="/banquet-management">
+                <el-icon><ChatDotRound /></el-icon>
                 <span>宴会管理</span>
             </el-menu-item>
           <el-menu-item index="/feedback">
@@ -80,7 +84,7 @@
           </el-menu-item>
           <el-menu-item index="/users">
             <el-icon><User /></el-icon>
-            <span>用户管理(未完成)</span>
+            <span>用户管理</span>
           </el-menu-item>
           <el-menu-item index="/dietary-tags">
             <el-icon><User /></el-icon>

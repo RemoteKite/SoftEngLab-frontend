@@ -108,6 +108,18 @@ const routes = [
                 name: 'Banquet',
                 component: () => import('@/components/BanquetOrder.vue'),
                 meta: { title: '宴会预定' }
+            },
+            {
+                path: 'banquet-management',
+                name:     'BanquetManagement',
+                component: () => import('@/components/BanquetManagement.vue'),
+                meta: { title: '宴会管理' }
+            },
+            {
+                path: 'users',
+                name: 'Users',
+                component: () => import('@/components/UserManagement.vue'),
+                meta: { title: '用户管理' }
             }
         ]
     },

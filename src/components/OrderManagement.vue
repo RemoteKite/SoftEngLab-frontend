@@ -17,6 +17,7 @@
                 <div class="filter-item" v-if="userRole !== 'DINER'">
                     <label>订单状态筛选:</label>
                     <el-select v-model="statusFilter" placeholder="筛选状态" clearable class="compact-input">
+                        <el-option label="所有" value=""></el-option> <!-- 添加“所有”选项 -->
                         <el-option
                                 v-for="status in allOrderStatuses"
                                 :key="status"
@@ -37,7 +38,8 @@
                     <span>我的订单</span>
                 </div>
             </template>
-            <el-table :data="orders" v-loading="loading" style="width: 100%" class="order-table" empty-text="暂无订单数据">
+            <!-- 数据绑定到 filteredOrdersDisplay 计算属性 -->
+            <el-table :data="filteredOrdersDisplay" v-loading="loading" style="width: 100%" class="order-table" empty-text="暂无订单数据">
                 <el-table-column prop="orderId" label="订单ID" width="120" sortable></el-table-column>
                 <el-table-column prop="username" label="用户名" width="120" v-if="userRole !== 'DINER'"></el-table-column>
                 <el-table-column prop="canteenName" label="食堂" width="120"></el-table-column>
@@ -171,11 +173,48 @@ import { Refresh } from '@element-plus/icons-vue';
 // 导入真实的 API 服务
 import { getAllOrders, getOrdersByUserId, updateOrderStatus, cancelOrder, getOrdersByCurrentUser } from '@/services/api.js';
 
-const userRole = ref(null); // 用户的角色，从JWT中获取
-const currentUserId = ref(null); // 当前用户的ID，从JWT中获取
+/**
+ * 从 JWT Token 中获取用户角色和ID。
+ * 此函数直接从 localStorage 获取 token 并进行解码。
+ */
+const getUserInfoFromJwt = () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.warn('未检测到登录凭证，将以普通用户身份加载订单。');
+        return { role: 'DINER', userId: 'anonymous' }; // 默认普通用户和匿名ID
+    }
+
+    try {
+        const payloadBase64 = token.split('.')[1]; // JWT 的第二部分是 Payload
+        // Base64 解码并解析 JSON
+        const decodedPayload = JSON.parse(atob(payloadBase64));
+
+        let role = 'DINER'; // 默认角色
+        if (decodedPayload.roles && Array.isArray(decodedPayload.roles)) {
+            // 根据角色优先级设置最高权限角色
+            if (decodedPayload.roles.includes('ROLE_ADMIN')) {
+                role = 'ADMIN';
+            } else if (decodedPayload.roles.includes('ROLE_STAFF')) {
+                role = 'STAFF';
+            }
+        }
+
+        const userId = decodedPayload.sub || 'unknownUser'; // 'sub' 字段通常是用户ID或用户名
+        return { role, userId };
+    } catch (error) {
+        console.error('解析JWT Token失败:', error);
+        ElMessage.error('JWT Token解析失败，请尝试重新登录。');
+        // 解析失败，回退到普通用户角色
+        return { role: 'DINER', userId: 'invalidTokenUser' };
+    }
+};
+
+const userRole = ref(null); // 用户的角色，初始化为null，将从JWT中获取
+const currentUserId = ref(null); // 当前用户的ID，初始化为null，将从JWT中获取
 
 const loading = ref(false);
-const orders = ref([]);
+const rawOrders = ref([]); // 新增：用于存储从后端获取的所有订单数据（ADMIN/STAFF）
+const orders = ref([]); // 实际绑定到表格的数据（DINER或经过前端筛选后的结果）
 const statusFilter = ref(''); // 用于 ADMIN/STAFF 筛选订单状态
 
 // 订单详情弹框相关
@@ -189,42 +228,6 @@ const newOrderStatus = ref(''); // 存储用户选择的新状态
 
 // 所有可能的订单状态，用于筛选器和状态文本映射
 const allOrderStatuses = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'];
-
-/**
- * 从 JWT Token 中获取用户角色和ID。
- * 在实际应用中，您会在这里解析从后端获取的JWT。
- * 如果没有有效的token，会将其视为普通用户。
- */
-const getUserInfoFromJwt = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        ElMessage.warning('未检测到登录凭证，您将以普通用户身份查看订单。');
-        return { role: 'DINER', userId: 'anonymousUser' }; // 默认普通用户和匿名ID
-    }
-
-    try {
-        const payloadBase64 = token.split('.')[1];
-        const decodedPayload = JSON.parse(atob(payloadBase64));
-
-        let role = 'DINER'; // 默认角色
-        if (decodedPayload.roles && Array.isArray(decodedPayload.roles)) {
-            if (decodedPayload.roles.includes('ROLE_ADMIN')) {
-                role = 'ADMIN';
-            } else if (decodedPayload.roles.includes('ROLE_STAFF')) {
-                role = 'STAFF';
-            }
-        }
-
-        // JWT的'sub'字段通常代表主题，这里用作用户ID（用户名）
-        const userId = decodedPayload.sub || 'unknownUser';
-        return { role, userId };
-    } catch (error) {
-        console.error('解析JWT Token失败:', error);
-        ElMessage.error('JWT Token解析失败，请尝试重新登录。');
-        // 解析失败也视为普通用户，或者可以重定向到登录页
-        return { role: 'DINER', userId: 'invalidTokenUser' };
-    }
-};
 
 // 辅助函数：根据状态获取标签类型
 const getStatusTagType = (status) => {
@@ -289,23 +292,29 @@ const canCancelOrder = (status) => {
 // 获取订单列表
 const fetchOrders = async () => {
     // 只有当角色已确定时才发起请求
-    if (!userRole.value) {
+    if (userRole.value === null) {
         console.log('用户角色未确定，暂不加载订单。');
         return;
     }
 
     loading.value = true;
-    orders.value = []; // 清空现有订单
+    rawOrders.value = []; // 每次获取前清空原始订单数据
+    orders.value = []; // 清空用于 DINER 角色，filteredOrdersDisplay 会重新计算
+
     try {
         let response;
         if (userRole.value === 'DINER') {
             // 对于普通用户，使用新的API，后端从JWT中获取用户ID
+            // 如果 getOrdersByCurrentUser 依赖于 currentUserId，需要确保它在调用时已存在。
+            // 否则，后端应能根据JWT token自动识别用户ID。
             response = await getOrdersByCurrentUser();
+            orders.value = response.data; // DINER 直接将数据赋值给 orders
         } else {
-            // ADMIN 或 STAFF 获取所有订单，并可以根据状态筛选
-            response = await getAllOrders({ status: statusFilter.value });
+            // ADMIN 或 STAFF 获取所有订单，前端进行筛选
+            // 这里不再传递 statusFilter，因为我们将在前端进行筛选
+            response = await getAllOrders(); // 调用 getAllOrders() 不带参数
+            rawOrders.value = response.data; // ADMIN/STAFF 将所有订单存储到 rawOrders
         }
-        orders.value = response.data;
         ElMessage.success('订单加载成功！');
     } catch (error) {
         ElMessage.error(`加载订单失败: ${error.message || '未知错误'}`); // 改进错误信息获取
@@ -314,6 +323,23 @@ const fetchOrders = async () => {
         loading.value = false;
     }
 };
+
+// 新增 computed 属性：用于在前端根据状态筛选订单并显示
+const filteredOrdersDisplay = computed(() => {
+    // 普通用户直接显示 orders.value (因为 getOrdersByCurrentUser 已经返回其自己的订单)
+    if (userRole.value === 'DINER') {
+        return orders.value;
+    }
+    // 管理员或员工根据 statusFilter 筛选 rawOrders
+    else {
+        if (!statusFilter.value) {
+            return rawOrders.value; // 如果没有筛选条件（statusFilter为空字符串），显示所有原始订单
+        } else {
+            return rawOrders.value.filter(order => order.status === statusFilter.value);
+        }
+    }
+});
+
 
 // 查看订单详情
 const viewOrderDetails = (order) => {
@@ -382,11 +408,13 @@ const confirmCancelOrder = async (order) => {
     }
 };
 
-// 监听用户角色和状态筛选的变化，自动刷新订单列表
-// currentUserId 不再作为直接触发 DINER 订单获取的依赖
-watch([userRole, statusFilter], () => {
-    fetchOrders();
-}, { immediate: true }); // 组件加载时立即执行一次
+// 监听 userRole 的变化，以触发订单数据的首次获取或重新获取
+// statusFilter 的变化将通过 computed 属性自动反映，不再触发 fetchOrders
+watch(userRole, () => {
+    if (userRole.value) { // 确保 userRole 已经确定
+        fetchOrders();
+    }
+}, { immediate: true }); // 组件加载时立即执行一次，确保初始数据加载
 
 // mounted 钩子：从 JWT Token 中获取用户角色和ID
 onMounted(() => {
@@ -540,11 +568,6 @@ onMounted(() => {
     }
     .el-table-column {
         min-width: 80px; /* Ensure columns are not too narrow */
-    }
-    /* Hide some columns on small screens if necessary for better display */
-    .el-table-column[prop="createdAt"],
-    .el-table-column[prop="username"] {
-        display: none;
     }
 }
 </style>

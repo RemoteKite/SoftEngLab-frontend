@@ -11,169 +11,171 @@
                 </div>
             </template>
 
-            <el-form :model="reservationForm" :rules="reservationRules" ref="reservationFormRef" label-width="100px">
-                <el-row :gutter="20">
-                    <el-col :span="12">
-                        <el-form-item label="选择餐厅" prop="canteenId">
-                            <el-select v-model="reservationForm.canteenId" placeholder="请选择餐厅" style="width: 100%;">
-                                <el-option
-                                        v-for="canteen in canteenList"
-                                        :key="canteen.canteenId"
-                                        :label="canteen.name"
-                                        :value="canteen.canteenId"
-                                ></el-option>
-                            </el-select>
-                        </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                        <el-form-item label="选择包厢" prop="roomId">
-                            <el-select
-                                    v-model="reservationForm.roomId"
-                                    placeholder="请选择包厢"
-                                    :loading="roomsLoading"
-                                    :disabled="!reservationForm.canteenId"
-                                    style="width: 100%;"
-                            >
-                                <el-option
-                                        v-for="room in roomList"
-                                        :key="room.roomId"
-                                        :label="room.name + ' (容量: ' + room.capacity + '人)'"
-                                        :value="room.roomId"
-                                ></el-option>
-                            </el-select>
-                        </el-form-item>
-                    </el-col>
-                </el-row>
-
-                <el-row :gutter="20">
-                    <el-col :span="12">
-                        <el-form-item label="宴会日期" prop="eventDate">
-                            <el-date-picker
-                                    v-model="reservationForm.eventDate"
-                                    type="date"
-                                    placeholder="选择宴会日期"
-                                    value-format="YYYY-MM-DD"
-                                    :disabled-date="disablePastDates"
-                                    style="width: 100%;"
-                            />
-                        </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                        <el-form-item label="宴会时间" prop="eventTime">
-                            <el-time-picker
-                                    v-model="reservationForm.eventTime"
-                                    placeholder="选择宴会时间"
-                                    value-format="HH:mm:ss"
-                                    style="width: 100%;"
-                            ></el-time-picker>
-                        </el-form-item>
-                    </el-col>
-                </el-row>
-
-                <el-row :gutter="20">
-                    <el-col :span="12">
-                        <el-form-item label="宾客人数" prop="numberOfGuests">
-                            <el-input-number
-                                    v-model="reservationForm.numberOfGuests"
-                                    :min="1"
-                                    :step="1"
-                                    placeholder="请输入宾客人数"
-                                    style="width: 100%;"
-                            ></el-input-number>
-                        </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                        <el-form-item label="联系人姓名" prop="contactName">
-                            <el-input v-model="reservationForm.contactName" placeholder="请输入联系人姓名"></el-input>
-                        </el-form-item>
-                    </el-col>
-                </el-row>
-
-                <el-row :gutter="20">
-                    <el-col :span="12">
-                        <el-form-item label="联系电话" prop="contactPhoneNumber">
-                            <el-input v-model="reservationForm.contactPhoneNumber" placeholder="请输入联系电话"></el-input>
-                        </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                        <el-form-item label="宴会目的" prop="purpose">
-                            <el-input v-model="reservationForm.purpose" placeholder="例如：生日聚会、商务宴请" maxlength="255"></el-input>
-                        </el-form-item>
-                    </el-col>
-                </el-row>
-
-                <el-form-item label="定制菜单">
-                    <div class="menu-selection-area">
-                        <div class="selected-items-display">
-                            <h4>已选菜品:</h4>
-                            <div class="selected-tags-wrapper">
-                                <el-tag
-                                        v-for="dish in reservationForm.selectedDishesForDisplay"
-                                        :key="dish.dishId"
-                                        closable
-                                        @close="removeDish(dish)"
-                                        size="small"
-                                        class="mr-1 mb-1"
+            <div class="form-scroll-content"> <!-- Added wrapper for scrollbar -->
+                <el-form :model="reservationForm" :rules="reservationRules" ref="reservationFormRef" label-width="100px">
+                    <el-row :gutter="20">
+                        <el-col :span="12">
+                            <el-form-item label="选择餐厅" prop="canteenId">
+                                <el-select v-model="reservationForm.canteenId" placeholder="请选择餐厅" style="width: 100%;">
+                                    <el-option
+                                            v-for="canteen in canteenList"
+                                            :key="canteen.canteenId"
+                                            :label="canteen.name"
+                                            :value="canteen.canteenId"
+                                    ></el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="选择包厢" prop="roomId">
+                                <el-select
+                                        v-model="reservationForm.roomId"
+                                        placeholder="请选择包厢"
+                                        :loading="roomsLoading"
+                                        :disabled="!reservationForm.canteenId"
+                                        style="width: 100%;"
                                 >
-                                    {{ dish.name }}
-                                </el-tag>
-                                <span v-if="reservationForm.selectedDishesForDisplay.length === 0" class="no-selection-text">未选择菜品</span>
+                                    <el-option
+                                            v-for="room in roomList"
+                                            :key="room.roomId"
+                                            :label="room.name + ' (容量: ' + room.capacity + '人)'"
+                                            :value="room.roomId"
+                                    ></el-option>
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+
+                    <el-row :gutter="20">
+                        <el-col :span="12">
+                            <el-form-item label="宴会日期" prop="eventDate">
+                                <el-date-picker
+                                        v-model="reservationForm.eventDate"
+                                        type="date"
+                                        placeholder="选择宴会日期"
+                                        value-format="YYYY-MM-DD"
+                                        :disabled-date="disablePastDates"
+                                        style="width: 100%;"
+                                />
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="宴会时间" prop="eventTime">
+                                <el-time-picker
+                                        v-model="reservationForm.eventTime"
+                                        placeholder="选择宴会时间"
+                                        value-format="HH:mm:ss"
+                                        style="width: 100%;"
+                                ></el-time-picker>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+
+                    <el-row :gutter="20">
+                        <el-col :span="12">
+                            <el-form-item label="宾客人数" prop="numberOfGuests">
+                                <el-input-number
+                                        v-model="reservationForm.numberOfGuests"
+                                        :min="1"
+                                        :step="1"
+                                        placeholder="请输入宾客人数"
+                                        style="width: 100%;"
+                                ></el-input-number>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="联系人姓名" prop="contactName">
+                                <el-input v-model="reservationForm.contactName" placeholder="请输入联系人姓名"></el-input>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+
+                    <el-row :gutter="20">
+                        <el-col :span="12">
+                            <el-form-item label="联系电话" prop="contactPhoneNumber">
+                                <el-input v-model="reservationForm.contactPhoneNumber" placeholder="请输入联系电话"></el-input>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="宴会目的" prop="purpose">
+                                <el-input v-model="reservationForm.purpose" placeholder="例如：生日聚会、商务宴请" maxlength="255"></el-input>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+
+                    <el-form-item label="定制菜单">
+                        <div class="menu-selection-area">
+                            <div class="selected-items-display">
+                                <h4>已选菜品:</h4>
+                                <div class="selected-tags-wrapper">
+                                    <el-tag
+                                            v-for="dish in reservationForm.selectedDishesForDisplay"
+                                            :key="dish.dishId"
+                                            closable
+                                            @close="removeDish(dish)"
+                                            size="small"
+                                            class="mr-1 mb-1"
+                                    >
+                                        {{ dish.name }}
+                                    </el-tag>
+                                    <span v-if="reservationForm.selectedDishesForDisplay.length === 0" class="no-selection-text">未选择菜品</span>
+                                </div>
+                                <el-tooltip :disabled="!!reservationForm.canteenId" content="请先选择餐厅" placement="top">
+                                    <el-button @click="openDishSelector" :disabled="!reservationForm.canteenId">
+                                        <el-icon><Plus /></el-icon> 选择菜品
+                                    </el-button>
+                                </el-tooltip>
                             </div>
-                            <el-tooltip :disabled="!!reservationForm.canteenId" content="请先选择餐厅" placement="top">
-                                <el-button @click="openDishSelector" :disabled="!reservationForm.canteenId">
-                                    <el-icon><Plus /></el-icon> 选择菜品
-                                </el-button>
-                            </el-tooltip>
-                        </div>
 
-                        <el-divider>或</el-divider>
+                            <el-divider>或</el-divider>
 
-                        <div class="selected-items-display">
-                            <h4>已选套餐:</h4>
-                            <div class="selected-tags-wrapper">
-                                <el-tag
-                                        v-for="pkg in reservationForm.selectedPackagesForDisplay"
-                                        :key="pkg.packageId"
-                                        closable
-                                        @close="removePackage(pkg)"
-                                        type="success"
-                                        size="small"
-                                        class="mr-1 mb-1"
-                                >
-                                    {{ pkg.name }}
-                                </el-tag>
-                                <span v-if="reservationForm.selectedPackagesForDisplay.length === 0" class="no-selection-text">未选择套餐</span>
+                            <div class="selected-items-display">
+                                <h4>已选套餐:</h4>
+                                <div class="selected-tags-wrapper">
+                                    <el-tag
+                                            v-for="pkg in reservationForm.selectedPackagesForDisplay"
+                                            :key="pkg.packageId"
+                                            closable
+                                            @close="removePackage(pkg)"
+                                            type="success"
+                                            size="small"
+                                            class="mr-1 mb-1"
+                                    >
+                                        {{ pkg.name }}
+                                    </el-tag>
+                                    <span v-if="reservationForm.selectedPackagesForDisplay.length === 0" class="no-selection-text">未选择套餐</span>
+                                </div>
+                                <el-tooltip :disabled="!!reservationForm.canteenId" content="请先选择餐厅" placement="top">
+                                    <el-button @click="openPackageSelector" :disabled="!reservationForm.canteenId">
+                                        <el-icon><Plus /></el-icon> 选择套餐
+                                    </el-button>
+                                </el-tooltip>
                             </div>
-                            <el-tooltip :disabled="!!reservationForm.canteenId" content="请先选择餐厅" placement="top">
-                                <el-button @click="openPackageSelector" :disabled="!reservationForm.canteenId">
-                                    <el-icon><Plus /></el-icon> 选择套餐
-                                </el-button>
-                            </el-tooltip>
                         </div>
-                    </div>
-                </el-form-item>
+                    </el-form-item>
 
-                <el-form-item label="定制菜单请求" prop="customMenuRequest">
-                    <el-input v-model="reservationForm.customMenuRequest" type="textarea" :rows="3" placeholder="例如：要求无麸质、素食餐点等" maxlength="1000"></el-input>
-                </el-form-item>
+                    <el-form-item label="定制菜单请求" prop="customMenuRequest">
+                        <el-input v-model="reservationForm.customMenuRequest" type="textarea" :rows="3" placeholder="例如：要求无麸质、素食餐点等" maxlength="1000"></el-input>
+                    </el-form-item>
 
-                <el-form-item label="特殊要求" prop="specialRequests">
-                    <el-input v-model="reservationForm.specialRequests" type="textarea" :rows="3" placeholder="例如：需要儿童椅、会场布置要求等" maxlength="500"></el-input>
-                </el-form-item>
+                    <el-form-item label="特殊要求" prop="specialRequests">
+                        <el-input v-model="reservationForm.specialRequests" type="textarea" :rows="3" placeholder="例如：需要儿童椅、会场布置要求等" maxlength="500"></el-input>
+                    </el-form-item>
 
-                <el-form-item label="生日蛋糕">
-                    <el-checkbox v-model="reservationForm.hasBirthdayCake">需要生日蛋糕</el-checkbox>
-                </el-form-item>
+                    <el-form-item label="生日蛋糕">
+                        <el-checkbox v-model="reservationForm.hasBirthdayCake">需要生日蛋糕</el-checkbox>
+                    </el-form-item>
 
-                <el-form-item>
-                    <el-button type="primary" @click="submitReservation" :loading="submitting">
-                        <el-icon><Check /></el-icon> 提交预定
-                    </el-button>
-                    <el-button @click="resetForm">
-                        <el-icon><Refresh /></el-icon> 重置
-                    </el-button>
-                </el-form-item>
-            </el-form>
+                    <el-form-item>
+                        <el-button type="primary" @click="submitReservation" :loading="submitting">
+                            <el-icon><Check /></el-icon> 提交预定
+                        </el-button>
+                        <el-button @click="resetForm">
+                            <el-icon><Refresh /></el-icon> 重置
+                        </el-button>
+                    </el-form-item>
+                </el-form>
+            </div>
         </el-card>
 
         <!-- 菜品选择弹框 -->
@@ -187,7 +189,7 @@
                 />
                 <div v-loading="dishesLoading" class="dish-grid">
                     <div
-                            v-for="dish in getFilteredDishes()"
+                            v-for="dish in getFilteredDishes"
                             :key="dish.dishId"
                             class="dish-item"
                             :class="{ selected: isDishSelected(dish) }"
@@ -202,7 +204,7 @@
                             <Check />
                         </el-icon>
                     </div>
-                    <el-empty v-if="!dishesLoading && getFilteredDishes().length === 0" description="暂无可选菜品" :image-size="80"></el-empty>
+                    <el-empty v-if="!dishesLoading && getFilteredDishes.length === 0" description="暂无可选菜品" :image-size="80"></el-empty>
                 </div>
             </div>
             <template #footer>
@@ -221,7 +223,7 @@
                 />
                 <div v-loading="packagesLoading" class="package-grid">
                     <div
-                            v-for="pkg in getFilteredPackages()"
+                            v-for="pkg in getFilteredPackages"
                             :key="pkg.packageId"
                             class="package-item"
                             :class="{ selected: isPackageSelected(pkg) }"
@@ -247,7 +249,7 @@
                             <Check />
                         </el-icon>
                     </div>
-                    <el-empty v-if="!packagesLoading && getFilteredPackages().length === 0" description="暂无可选套餐" :image-size="80"></el-empty>
+                    <el-empty v-if="!packagesLoading && getFilteredPackages.length === 0" description="暂无可选套餐" :image-size="80"></el-empty>
                 </div>
             </div>
             <template #footer>
@@ -328,7 +330,7 @@ const reservationRules = reactive({
     contactName: [{ required: true, message: '请输入联系人姓名', trigger: 'blur' }],
     contactPhoneNumber: [
         { required: true, message: '请输入联系电话', trigger: 'blur' },
-        { pattern: /^\\+?[0-9. ()-]{7,25}$/, message: '电话号码格式不正确', trigger: 'blur' }
+        { pattern: /^1[3-9]\d{9}$/, message: '电话号码格式不正确', trigger: 'blur' }
     ],
     purpose: [{ max: 255, message: '宴会目的不能超过255个字符', trigger: 'blur' }],
     customMenuRequest: [{ max: 1000, message: '定制菜单请求不能超过1000个字符', trigger: 'blur' }],
@@ -584,6 +586,7 @@ onMounted(async () => {
 .banquet-reservation-container {
     margin: 0 auto;
     padding: 20px;
+    padding-bottom: 50px; /* 增加底部空隙 */
     max-width: 900px; /* Adjusted max-width for better form layout */
 }
 
@@ -606,7 +609,17 @@ onMounted(async () => {
     border: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin-bottom: 24px;
-    padding: 20px; /* Add some internal padding */
+    /* 移除此处的 padding，将控制权交给 form-scroll-content 和 card-header */
+    /* padding: 20px; */
+}
+
+/* 覆盖 Element Plus 默认的 el-card__header 和 el-card__body 样式 */
+:deep(.el-card__header) {
+    padding: 0 !important; /* 移除默认内边距 */
+}
+
+:deep(.el-card__body) {
+    padding: 0 !important; /* 移除默认内边距 */
 }
 
 .card-header {
@@ -615,14 +628,35 @@ onMounted(async () => {
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
-    margin-bottom: 15px; /* Space below header */
+    /* 移除 margin-bottom: 15px; */
+    margin-bottom: 0;
+    padding: 15px 20px; /* 为表头内容添加内边距 */
 }
 
-.card-header h3 {
-    margin: 0;
-    font-size: 18px;
-    color: #1f2937;
-    font-weight: 600;
+/* 新增样式：用于可滚动表单内容的容器 */
+.form-scroll-content {
+    max-height: calc(100vh - 280px); /* 调整最大高度以适应视图 */
+    overflow-y: auto; /* 垂直滚动条 */
+    padding: 20px; /* 为表单内容添加内边距 */
+}
+
+/* 自定义滚动条样式 */
+.form-scroll-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.form-scroll-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.form-scroll-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.form-scroll-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 .menu-selection-area {
@@ -787,6 +821,9 @@ onMounted(async () => {
 
     .dish-grid, .package-grid {
         grid-template-columns: 1fr;
+    }
+    .form-scroll-content {
+        max-height: calc(100vh - 200px); /* Adjust for smaller screens */
     }
 }
 </style>
