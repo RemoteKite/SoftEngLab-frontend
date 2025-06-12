@@ -10,7 +10,7 @@
                     <span>{{ getOrderStatusText(userRole) || '加载中...' }}</span>
                 </div>
                 <div class="filter-item" v-if="userRole === 'DINER'">
-                    <label>当前用户ID:</label>
+                    <label>当前用户名:</label>
                     <span>{{ currentUserId || '加载中...' }}</span>
                 </div>
 

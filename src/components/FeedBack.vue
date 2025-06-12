@@ -9,7 +9,7 @@
                     <span>{{ getUserRoleText(userRole) || '加载中...' }}</span>
                 </div>
                 <div class="filter-item" v-if="userRole === 'DINER' && currentUserId">
-                    <label>我的用户ID:</label>
+                    <label>我的用户名:</label>
                     <span>{{ currentUserId }}</span>
                 </div>
                 <el-button type="primary" @click="fetchReviews" :loading="loading">

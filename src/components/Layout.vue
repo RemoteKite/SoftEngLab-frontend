@@ -37,23 +37,23 @@
             <el-icon><Odometer /></el-icon>
             <span>仪表盘</span>
           </el-menu-item>
-          <el-menu-item index="/canteens">
+          <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/canteens">
             <el-icon><Shop /></el-icon>
             <span>餐厅管理</span>
           </el-menu-item>
-            <el-menu-item index="/room">
+            <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/room">
                 <el-icon><Menu /></el-icon>
                 <span>房间管理</span>
             </el-menu-item>
-          <el-menu-item index="/dishes">
+          <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/dishes">
           <el-icon><Search /></el-icon>
           <span>菜品管理</span>
           </el-menu-item>
-          <el-menu-item index="/publish">
+          <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/publish">
             <el-icon><Edit /></el-icon>
             <span>发布菜谱</span>
           </el-menu-item>
-            <el-menu-item index="/package">
+            <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/package">
                 <el-icon><Search /></el-icon>
                 <span>套餐管理</span>
             </el-menu-item>
@@ -75,21 +75,21 @@
             </el-menu-item>
           <el-menu-item index="/feedback">
             <el-icon><ChatDotRound /></el-icon>
-            <span>评价与反馈(未完成)</span>
+            <span>评价与反馈</span>
           </el-menu-item>
           <el-menu-item index="/guidance">
             <el-icon><FirstAidKit /></el-icon>
             <span>健康饮食指导</span>
           </el-menu-item>
-          <el-menu-item index="/users">
+          <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/users">
             <el-icon><User /></el-icon>
             <span>用户管理</span>
           </el-menu-item>
-          <el-menu-item index="/dietary-tags">
+          <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/dietary-tags">
             <el-icon><User /></el-icon>
             <span>饮食标签</span>
           </el-menu-item>
-          <el-menu-item index="/allergens">
+          <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/allergens">
             <el-icon><User /></el-icon>
             <span>过敏原标签</span>
           </el-menu-item>
