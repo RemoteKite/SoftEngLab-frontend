@@ -71,7 +71,7 @@
                 <el-form-item label="图片" prop="imageUrl">
                     <div class="image-upload-wrapper">
                         <input type="file" @change="handleFileChange" accept="image/*" class="file-input" />
-                        <el-button type="info" plain>选择图片</el-button>
+                        <el-button type="info" >选择图片</el-button>
                     </div>
                     <div class="image-preview">
                         <img v-if="isEditMode && currentCanteen.imageUrl && !selectedFile" :src="currentCanteen.imageUrl" alt="食堂图片" class="preview-thumb">
@@ -118,7 +118,7 @@
                     <div class="file-input-group">
                         <div class="image-upload-wrapper">
                             <input type="file" @change="handleNewImageFileChange" accept="image/*" class="file-input" />
-                            <el-button type="info" plain>选择图片</el-button>
+                            <el-button type="info">选择图片</el-button>
                         </div>
                         <el-input
                                 v-model="newImageDescription"

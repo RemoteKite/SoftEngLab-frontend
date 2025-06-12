@@ -18,15 +18,6 @@
           </el-select>
         </el-col>
         <el-col :span="6">
-          <el-select v-model="filterCategory" placeholder="菜品分类" clearable>
-            <el-option label="全部分类" value=""></el-option>
-            <el-option label="主食类" value="staple"></el-option>
-            <el-option label="荤菜类" value="meat"></el-option>
-            <el-option label="素菜类" value="vegetable"></el-option>
-            <el-option label="汤类" value="soup"></el-option>
-          </el-select>
-        </el-col>
-        <el-col :span="6">
           <el-select v-model="ratingFilter" placeholder="评分筛选" clearable>
             <el-option label="全部评分" value=""></el-option>
             <el-option label="5星好评" value="5"></el-option>

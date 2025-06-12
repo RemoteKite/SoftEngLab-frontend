@@ -42,6 +42,10 @@
             <el-icon><Shop /></el-icon>
             <span>餐厅管理</span>
           </el-menu-item>
+            <el-menu-item index="/room">
+                <el-icon><Menu /></el-icon>
+                <span>房间管理</span>
+            </el-menu-item>
           <el-menu-item index="/dishes">
           <el-icon><Search /></el-icon>
           <span>菜品管理</span>
@@ -50,6 +54,10 @@
             <el-icon><Edit /></el-icon>
             <span>发布菜谱</span>
           </el-menu-item>
+            <el-menu-item index="/package">
+                <el-icon><Search /></el-icon>
+                <span>套餐管理</span>
+            </el-menu-item>
           <el-menu-item index="/orders">
             <el-icon><Calendar /></el-icon>
             <span>预定餐品</span>
@@ -58,6 +66,10 @@
               <el-icon><ChatDotRound /></el-icon>
               <span>订单管理</span>
           </el-menu-item>
+            <el-menu-item index="/banquet">
+                <el-icon><Calendar /></el-icon>
+                <span>宴会管理</span>
+            </el-menu-item>
           <el-menu-item index="/feedback">
             <el-icon><ChatDotRound /></el-icon>
             <span>评价与反馈(未完成)</span>

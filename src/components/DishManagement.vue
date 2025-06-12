@@ -166,7 +166,7 @@
         <el-form-item label="图片" prop="imageUrl">
           <div class="image-upload-wrapper">
             <input type="file" @change="handleFileChange" accept="image/*" class="file-input" />
-            <el-button type="info" plain>选择图片</el-button>
+            <el-button type="info">选择图片</el-button>
           </div>
           <div class="image-preview">
             <img v-if="isEditMode && currentDish.imageUrl && !selectedFile" :src="currentDish.imageUrl" alt="菜品图片" class="preview-thumb">

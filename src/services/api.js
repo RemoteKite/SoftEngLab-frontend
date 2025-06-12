@@ -331,7 +331,7 @@ export const getReviewsByUserId = (userId) => {
 export const createRoom = (params) => {
     return api.post('/rooms', params, {
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'multipart/form-data'
         }
     });
 };
@@ -346,11 +346,11 @@ export const getAllRooms = () => {
 
 export const updateRoom = (id, params) => {
     return api.put(`/rooms/${id}`, params, {
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    });
-};
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+    };
 
 export const deleteRoom = (id) => {
     return api.delete(`/rooms/${id}`);

@@ -90,6 +90,24 @@ const routes = [
                 name: 'Allergens',
                 component: AllergenTag,
                 meta: { title: '创建标签' }
+            },
+            {
+                path: 'package',
+                name: 'Package',
+                component: () => import('@/components/PackageManagement.vue'),
+                meta: { title: '套餐管理' }
+            },
+            {
+                path: 'room',
+                name: 'Room',
+                component: () => import('@/components/RoomManagement.vue'),
+                meta: { title: '房间管理' }
+            },
+            {
+                path: 'banquet',
+                name: 'Banquet',
+                component: () => import('@/components/BanquetOrder.vue'),
+                meta: { title: '宴会预定' }
             }
         ]
     },
