@@ -111,10 +111,6 @@ export const deleteDish = (id) => {
     return api.delete(`/dishes/${id}`);
 }
 
-//TODO 菜品过滤功能
-export const filterDishes = (params) => {
-    return api.post('/dishes/filter', params);
-};
 
 // 菜谱管理相关 API
 export const publishDailyMenu = (params) => {
@@ -240,36 +236,199 @@ export const getOrderById = (id) => {
     return api.get(`/orders/${id}`);
 };
 
-export const updateOrderStatus = (id, status) => {
-    return api.put(`/orders/${id}/status`, { status });
-};
+export const getOrdersByUserId = (userId) => {
+    return api.get(`/orders/user/${userId}`);
+}
 
-export const deleteOrder = (id) => {
-    return api.delete(`/orders/${id}`);
+export const getOrdersByCurrentUser = () => {
+    return api.get('/orders/current-user');
+}
+
+export const updateOrderStatus = (id, status) => {
+    return api.put(`/orders/${id}/status`, null,{
+        params: {
+            newStatus: status
+        }
+    });
 };
 
 export const cancelOrder = (id) => {
-    return api.post(`/orders/${id}/cancel`);
+    return api.put(`/orders/${id}/cancel`);
 };
 
-export const getBanquetHalls = () => {
-    return api.get('/banquet/halls');
+export const createOrder = (orderData) => {
+    return api.post('/orders', orderData, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
 };
 
-export const getBookingAvailability = (params) => {
-    return api.get('/banquet/availability', { params });
+export const createPackage = (params) => {
+    return api.post('/packages', params, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
 };
 
-export const createBooking = (bookingData) => {
-    return api.post('/banquet/bookings', bookingData);
+export const getPackageById = (id) => {
+    return api.get(`/packages/${id}`);
 };
 
-export const updateBookingStatus = (bookingId, status) => {
-    return api.put(`/banquet/bookings/${bookingId}/status`, { status });
+export const getAllPackages = () => {
+    return api.get('/packages');
 };
 
-export const cancelBooking = (bookingId) => {
-    return api.delete(`/banquet/bookings/${bookingId}`);
+export const updatePackage = (id, params) => {
+    return api.put(`/packages/${id}`, params, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+};
+
+export const deletePackage = (id) => {
+    return api.delete(`/packages/${id}`);
+};
+
+export const createReview = (params) => {
+    return api.post('/reviews', params, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+};
+
+export const getReviewsByDishId = (dishId) => {
+    return api.get(`/reviews/dish/${dishId}`);
+};
+
+export const getAllReviews = () => {
+    return api.get('/reviews');
+};
+
+export const getReviewById = (id) => {
+    return api.get(`/reviews/${id}`);
+};
+
+export const updateReview = (id, params) => {
+    return api.put(`/reviews/${id}`, params, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+};
+
+export const deleteReview = (id) => {
+    return api.delete(`/reviews/${id}`);
+};
+
+export const getReviewsByUserId = (userId) => {
+    return api.get(`/reviews/user/${userId}`);
+};
+
+export const createRoom = (params) => {
+    return api.post('/rooms', params, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+};
+
+export const getRoomById = (id) => {
+    return api.get(`/rooms/${id}`);
+};
+
+export const getAllRooms = () => {
+    return api.get('/rooms');
+};
+
+export const updateRoom = (id, params) => {
+    return api.put(`/rooms/${id}`, params, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+};
+
+export const deleteRoom = (id) => {
+    return api.delete(`/rooms/${id}`);
+};
+
+export const getRoomsByCanteenId = (canteenId) => {
+    return api.get(`/rooms/canteen/${canteenId}`);
+};
+
+export const createBanquet = (params) => {
+    return api.post('/banquets', params, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+};
+
+export const getBanquetById = (id) => {
+    return api.get(`/banquets/${id}`);
+};
+
+export const getAllBanquets = () => {
+    return api.get('/banquets');
+};
+
+export const updateBanquet = (id, params) => {
+    return api.put(`/banquets/${id}`, params, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+};
+
+export const deleteBanquet = (id) => {
+    return api.delete(`/banquets/${id}`);
+};
+
+export const getBanquetsByCanteenId = (canteenId) => {
+    return api.get(`/banquets/canteen/${canteenId}`);
+};
+
+export const getBanquetsByCanteenIdByUserId = (userId) => {
+    return api.get(`/banquets/canteen/user/${userId}`);
+};
+
+export const updateBanquetStatus = (id, status) => {
+    return api.put(`/banquet/${id}/status`, null, { // 注意：后端是 /api/banquet/{id}/status，这里需要确保路径正确
+        params: {
+            newStatus: status
+        }
+    });
+};
+
+export const cancelBanquet = (id) => {
+    return api.post(`/banquets/${id}/cancel`);
+};
+
+export const getAllUsers = () => {
+    return api.get('/admin/users');
+};
+export const updateUserRole = (userId, role) => {
+    return api.put(`/admin/users/${userId}/role`, null, {
+        params: {
+            newRole: role
+        }
+    });
+};
+
+export const deleteUser = (userId) => {
+    return api.delete(`/admin/users/${userId}`);
+};
+
+export const resetUserPassword = (userId, newPassword) => {
+    return api.put(`/admin/users/${userId}/password`, null, {
+        params: {
+            newPassword: newPassword
+        }
+    });
 };
 
 export default api;

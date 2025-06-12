@@ -80,12 +80,6 @@ const routes = [
                 meta: { title: '订单管理' }
             },
             {
-                path: 'banquet',
-                name: 'Banquet',
-                component: () => import('@/components/BanquetBooking.vue'), // 假设组件放在components目录
-                meta: { title: '宴会预定' }
-            },
-            {
                 path: 'dietary-tags',
                 name: 'DietaryTags',
                 component: CreateTag,

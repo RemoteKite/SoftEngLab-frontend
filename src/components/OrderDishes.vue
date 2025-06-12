@@ -42,6 +42,30 @@
                                 class="compact-input"
                         />
                     </div>
+                    <!-- 新增膳食标签筛选 -->
+                    <div class="filter-item">
+                        <label>膳食标签</label>
+                        <el-select v-model="filters.selectedDietaryTags" placeholder="选择膳食标签" multiple clearable class="compact-input">
+                            <el-option
+                                    v-for="tag in allDietaryTags"
+                                    :key="tag"
+                                    :label="tag"
+                                    :value="tag"
+                            />
+                        </el-select>
+                    </div>
+                    <!-- 新增过敏原筛选 -->
+                    <div class="filter-item">
+                        <label>过敏原</label>
+                        <el-select v-model="filters.selectedAllergens" placeholder="排除过敏原" multiple clearable class="compact-input">
+                            <el-option
+                                    v-for="allergen in allAllergens"
+                                    :key="allergen"
+                                    :label="allergen"
+                                    :value="allergen"
+                            />
+                        </el-select>
+                    </div>
                 </div>
             </el-card>
         </div>
@@ -63,12 +87,13 @@
                             <el-icon><Refresh /></el-icon> 重置筛选
                         </el-button>
                     </div>
-                    <div class="cart-summary" v-if="cartItems.length > 0">
+                    <!-- 移除此处购物车图标和总览 -->
+                    <!-- <div class="cart-summary" v-if="cartItems.length > 0">
                         <el-badge :value="totalQuantity" class="cart-badge">
                             <el-icon class="cart-icon"><ShoppingCart /></el-icon>
                         </el-badge>
                         <span class="cart-total">¥{{ totalAmount }}</span>
-                    </div>
+                    </div> -->
                 </div>
             </template>
 
@@ -78,9 +103,10 @@
                         :key="dish.dishId"
                         class="dish-card"
                         :class="{ 'out-of-stock': !dish.available }"
+                        @click="showDishDetails(dish)"
                 >
                     <div class="dish-image">
-                        <img :src="dish.imageUrl || 'src/assets/noImg.svg'" :alt="dish.name" />
+                        <img :src="dish.imageUrl || 'https://placehold.co/220x120/E0E0E0/333333?text=无图片'" :alt="dish.name" />
                     </div>
 
                     <div class="dish-info">
@@ -97,7 +123,7 @@
                                         size="small"
                                         circle
                                         :disabled="!getCartQuantity(dish.dishId)"
-                                        @click="removeFromCart(dish.dishId)"
+                                        @click.stop="removeFromCart(dish.dishId)"
                                 >
                                     <el-icon><Minus /></el-icon>
                                 </el-button>
@@ -106,7 +132,7 @@
                                         size="small"
                                         circle
                                         type="primary"
-                                        @click="addToCart(dish)"
+                                        @click.stop="addToCart(dish)"
                                 >
                                     <el-icon><Plus /></el-icon>
                                 </el-button>
@@ -143,12 +169,64 @@
                 立即预定
             </el-button>
         </div>
+
+        <!-- 菜品详情弹框 -->
+        <el-dialog
+                v-model="showDishDetailModal"
+                :title="selectedDishDetails ? selectedDishDetails.name + ' 详情' : '菜品详情'"
+                width="500px"
+                destroy-on-close
+                center
+        >
+            <div v-if="selectedDishDetails" class="dish-detail-content">
+                <img :src="selectedDishDetails.imageUrl || 'https://placehold.co/400x200/E0E0E0/333333?text=无图片'" :alt="selectedDishDetails.name" class="detail-dish-image" />
+                <div class="detail-info-section">
+                    <h3>{{ selectedDishDetails.name }}</h3>
+                    <p class="detail-description">{{ selectedDishDetails.description || '暂无描述' }}</p>
+                    <p class="detail-price">价格: ¥{{ selectedDishDetails.price ? selectedDishDetails.price.toFixed(2) : 'N/A' }}</p>
+
+                    <div v-if="selectedDishDetails.dietaryTagNames && selectedDishDetails.dietaryTagNames.length" class="detail-tags">
+                        <strong>膳食标签:</strong>
+                        <el-tag
+                                v-for="tag in selectedDishDetails.dietaryTagNames"
+                                :key="tag"
+                                size="small"
+                                type="info"
+                                effect="plain"
+                                class="tag-item"
+                        >{{ tag }}</el-tag>
+                    </div>
+
+                    <div v-if="selectedDishDetails.allergenNames && selectedDishDetails.allergenNames.length" class="detail-tags">
+                        <strong>过敏原:</strong>
+                        <el-tag
+                                v-for="allergen in selectedDishDetails.allergenNames"
+                                :key="allergen"
+                                size="small"
+                                type="danger"
+                                effect="plain"
+                                class="tag-item"
+                        >{{ allergen }}</el-tag>
+                    </div>
+
+                    <p v-if="selectedDishDetails.averageRating !== undefined && selectedDishDetails.averageRating !== null" class="detail-rating">
+                        平均评分: {{ selectedDishDetails.averageRating.toFixed(1) }} ⭐
+                    </p>
+                    <p v-else class="detail-rating">平均评分: 暂无</p>
+                </div>
+            </div>
+            <template #footer>
+                <span class="dialog-footer">
+                    <el-button @click="showDishDetailModal = false">关闭</el-button>
+                </span>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup>
 import { reactive, computed, onMounted, watch, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
 import {
     ShoppingCart,
     Plus,
@@ -159,7 +237,7 @@ import {
 } from '@element-plus/icons-vue'
 
 // Assuming these APIs are globally available or imported from a shared file
-import { getAllCanteens, getDailyMenusByCanteenAndDate } from '@/services/api.js';
+import { getAllCanteens, getDailyMenusByCanteenAndDate, createOrder } from '@/services/api.js';
 
 // Reactive data
 const loading = ref(false); // Global loading for fetching menu data
@@ -171,6 +249,8 @@ const filters = reactive({
     canteenId: '',
     reservationDate: '', // Format:YYYY-MM-DD
     reservationTime: '', // Format:HH:mm:ss
+    selectedDietaryTags: [], // 用于存储选中的膳食标签
+    selectedAllergens: [], // 用于存储选中的过敏原
 });
 
 const dishNameFilter = ref(''); // Pure frontend filter for dish name
@@ -182,6 +262,14 @@ const totalFilteredDishes = ref(0);
 
 // Cart
 const cartItems = reactive([]);
+
+// 菜品详情弹框相关状态
+const showDishDetailModal = ref(false);
+const selectedDishDetails = ref(null); // 用于存储当前点击的菜品详情
+
+// 用于存储所有可用的膳食标签和过敏原选项
+const allDietaryTags = ref([]);
+const allAllergens = ref([]);
 
 // Helper function: Extract error message
 const getErrorMessage = (error) => {
@@ -204,6 +292,26 @@ const filteredDishes = computed(() => {
             dish.name.toLowerCase().includes(dishNameFilter.value.toLowerCase())
         );
     }
+
+    // 根据膳食标签筛选 (必须包含所有选中的标签)
+    if (filters.selectedDietaryTags.length > 0) {
+        currentDishes = currentDishes.filter(dish =>
+            filters.selectedDietaryTags.every(selectedTag =>
+                dish.dietaryTagNames && dish.dietaryTagNames.includes(selectedTag)
+            )
+        );
+    }
+
+    // 根据过敏原筛选 (必须不包含任何选中的过敏原)
+    if (filters.selectedAllergens.length > 0) {
+        currentDishes = currentDishes.filter(dish =>
+            // 如果菜品没有过敏原信息，或者菜品的过敏原都不在用户选中的过敏原列表中，则保留该菜品
+            !dish.allergenNames?.some(dishAllergen =>
+                filters.selectedAllergens.includes(dishAllergen)
+            )
+        );
+    }
+
     return currentDishes;
 });
 
@@ -246,6 +354,8 @@ const fetchMenuDishes = async () => {
     dailyMenuDishes.value = [];
     cartItems.splice(0);
     currentPage.value = 1;
+    allDietaryTags.value = []; // 清空之前的标签和过敏原
+    allAllergens.value = [];
 
     if (!filters.canteenId || !filters.reservationDate || !filters.reservationTime) {
         return;
@@ -256,6 +366,8 @@ const fetchMenuDishes = async () => {
         const response = await getDailyMenusByCanteenAndDate(filters.canteenId, filters.reservationDate);
         const selectedTime = filters.reservationTime;
         const dishMap = new Map(); // 使用Map对象根据dishId去重
+        const uniqueDietaryTags = new Set(); // 收集所有膳食标签
+        const uniqueAllergens = new Set(); // 收集所有过敏原
 
         response.data.forEach(menu => {
             if (selectedTime >= menu.startTime && selectedTime <= menu.endTime) {
@@ -263,14 +375,24 @@ const fetchMenuDishes = async () => {
                     if (!dishMap.has(dish.dishId)) {
                         dishMap.set(dish.dishId, {
                             ...dish,
-                            available: true,
+                            // 确保这些字段即使后端未提供，也存在并有默认值
+                            dietaryTagNames: dish.dietaryTagNames || [],
+                            allergenNames: dish.allergenNames || [],
+                            averageRating: dish.averageRating === undefined ? null : dish.averageRating,
+                            available: true, // 确保 available 属性存在
                         });
+
+                        // 收集膳食标签和过敏原
+                        dish.dietaryTagNames?.forEach(tag => uniqueDietaryTags.add(tag));
+                        dish.allergenNames?.forEach(allergen => uniqueAllergens.add(allergen));
                     }
                 });
             }
         });
 
         dailyMenuDishes.value = Array.from(dishMap.values());
+        allDietaryTags.value = Array.from(uniqueDietaryTags);
+        allAllergens.value = Array.from(uniqueAllergens);
 
         ElMessage.success(`已加载 ${dailyMenuDishes.value.length} 个菜品`);
     } catch (error) {
@@ -325,17 +447,23 @@ const disabledDate = (time) => {
 };
 
 const resetFilters = () => {
-    // Only reset the pure frontend filters and pagination
+    // 重置所有前端筛选条件和分页
     dishNameFilter.value = '';
+    filters.selectedDietaryTags = [];
+    filters.selectedAllergens = [];
     currentPage.value = 1;
-    // The canteenId, reservationDate, and reservationTime are intentionally NOT reset here,
-    // as they are considered "selection" rather than "filter" now.
-    // If the user wants to change canteen/date/time, they do it directly.
+    // 餐厅ID、预定日期和时间不在此处重置，因为它们是“选择”而不是“筛选”
     ElMessage.success('筛选条件已重置');
 };
 
 const handlePageChange = (page) => {
     currentPage.value = page;
+};
+
+// 显示菜品详情弹框
+const showDishDetails = (dish) => {
+    selectedDishDetails.value = { ...dish }; // 复制菜品信息，避免直接修改
+    showDishDetailModal.value = true;
 };
 
 const proceedToCheckout = async () => {
@@ -350,33 +478,32 @@ const proceedToCheckout = async () => {
             }
         );
 
-        // Placeholder for actual order creation API call
+        // 构建符合 OrderRequest DTO 的数据
         const orderData = {
             canteenId: filters.canteenId,
-            reservationDate: filters.reservationDate,
-            reservationTime: filters.reservationTime, // Include reservation time
+            orderDate: filters.reservationDate,
+            pickupTime: filters.reservationTime,
             items: cartItems.map(item => ({
                 dishId: item.dishId,
-                quantity: item.quantity,
-                priceAtOrder: item.price
-            })),
-            totalAmount: totalAmount.value,
-            estimatedPickupTime: new Date(new Date().getTime() + estimatedTime.value * 60 * 1000).toLocaleString()
+                quantity: item.quantity
+            }))
         };
 
         console.log('Order Data to be sent:', orderData);
-        // await createOrder(orderData); // Uncomment and implement your actual API call here
+
+        // 调用 createOrder API
+        await createOrder(orderData);
 
         ElMessage.success('预定成功！请按时到餐厅取餐');
 
-        cartItems.splice(0); // Clear cart after successful order
+        cartItems.splice(0); // 清空购物车
 
-        // Optionally navigate to an orders page
+        // 可以在这里添加导航到订单页面的逻辑，例如：
         // router.push('/orders');
 
     } catch (error) {
         if (error !== 'cancel') {
-            ElMessage.error('预定失败，请重试');
+            ElMessage.error(`预定失败：${getErrorMessage(error)}`); // 显示具体错误信息
             console.error('预定失败:', error);
         } else {
             ElMessage.info('预定已取消');
@@ -389,12 +516,19 @@ watch([() => filters.canteenId, () => filters.reservationDate, () => filters.res
     if (newCanteenId && newReservationDate && newReservationTime) {
         fetchMenuDishes(); // Only fetch if all three are selected
     } else {
-        // If any is cleared, clear the displayed dishes and cart
+        // If any is cleared, clear the displayed dishes, cart, and filter options
         dailyMenuDishes.value = [];
         cartItems.splice(0);
         currentPage.value = 1;
+        allDietaryTags.value = [];
+        allAllergens.value = [];
     }
 }, { immediate: true }); // immediate: true ensures it runs on initial component mount
+
+// Watchers to reset pagination when dietary tags or allergens filters change
+watch([() => filters.selectedDietaryTags, () => filters.selectedAllergens], () => {
+    currentPage.value = 1; // 筛选条件变化时重置分页
+});
 
 // Lifecycle Hooks
 onMounted(() => {
@@ -402,6 +536,7 @@ onMounted(() => {
     // Set default reservation date to today
     filters.reservationDate = new Date().toISOString().slice(0, 10);
     // Set default reservation time (e.g., current time or a common lunch time)
+    // 确保时间格式为 HH:mm:ss，Element Plus time-picker的value-format是HH:mm:ss
     filters.reservationTime = new Date().toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 });
 </script>
@@ -448,29 +583,29 @@ onMounted(() => {
 }
 
 .filter-group {
-    display: flex; /* Make this a flex container for horizontal items */
-    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
-    gap: 20px; /* Space between each filter item */
-    align-items: flex-end; /* Align items to the bottom, useful if labels are different heights */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
 }
 
 .filter-item {
     display: flex;
-    flex-direction: column; /* Keep label and input on separate lines */
-    align-items: flex-end; /* Right-align label and input within each item */
-    gap: 8px; /* Space between label and input */
-    width: auto; /* Allow item to shrink to content width */
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    width: auto;
 }
 
 .filter-item label {
     font-size: 14px;
     color: #374151;
     font-weight: 500;
-    white-space: nowrap; /* Prevent label from wrapping */
+    white-space: nowrap;
 }
 
 .compact-input {
-    width: 150px; /* Further reduced width for inputs */
+    width: 150px;
 }
 
 .menu-section {
@@ -483,8 +618,8 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap; /* Allow wrapping for responsiveness */
-    gap: 16px; /* Space between header elements */
+    flex-wrap: wrap;
+    gap: 16px;
 }
 
 .section-header h3 {
@@ -497,8 +632,8 @@ onMounted(() => {
 .dish-filter-controls {
     display: flex;
     align-items: center;
-    flex-wrap: wrap; /* Allow wrapping for responsiveness */
-    gap: 12px; /* Space between filter controls */
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .cart-summary {
@@ -513,7 +648,7 @@ onMounted(() => {
 
 .cart-icon {
     font-size: 24px;
-    color: #409EFF; /* Consistent primary color */
+    color: #409EFF;
 }
 
 .cart-total {
@@ -524,11 +659,11 @@ onMounted(() => {
 
 .menu-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Adjusted minmax for smaller cards */
-    gap: 15px; /* Reduced gap for more compactness */
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 15px;
     margin-top: 20px;
-    max-height: calc(100vh - 400px); /* Adjusted max-height to be dynamic based on viewport height */
-    overflow-y: auto; /* Added overflow-y for scrolling */
+    max-height: calc(100vh - 400px);
+    overflow-y: auto;
 }
 
 .dish-card {
@@ -537,8 +672,9 @@ onMounted(() => {
     overflow: hidden;
     transition: all 0.3s ease;
     background: white;
-    display: flex; /* Make dish-card a flex container */
-    flex-direction: column; /* Arrange children in a column */
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
 }
 
 .dish-card:hover {
@@ -549,14 +685,15 @@ onMounted(() => {
 .dish-card.out-of-stock {
     opacity: 0.6;
     filter: grayscale(0.3);
+    cursor: default;
 }
 
 .dish-image {
     position: relative;
-    height: 120px; /* Reduced image height */
+    height: 120px;
     overflow: hidden;
-    background-color: #f0f0f0; /* Placeholder background */
-    flex-shrink: 0; /* Prevent image from shrinking */
+    background-color: #f0f0f0;
+    flex-shrink: 0;
 }
 
 .dish-image img {
@@ -566,43 +703,43 @@ onMounted(() => {
 }
 
 .dish-info {
-    padding: 12px; /* Reduced padding */
-    flex-grow: 1; /* Allow dish-info to take remaining height */
-    display: flex; /* Make dish-info a flex container */
-    flex-direction: column; /* Arrange children in a column */
-    justify-content: space-between; /* Push footer to bottom */
+    padding: 12px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .dish-name {
-    font-size: 15px; /* Slightly reduced font size */
+    font-size: 15px;
     font-weight: 600;
     color: #1f2937;
-    margin: 0 0 6px 0; /* Reduced margin */
+    margin: 0 0 6px 0;
 }
 
 .dish-description {
-    font-size: 13px; /* Slightly reduced font size */
+    font-size: 13px;
     color: #6b7280;
-    margin: 0 0 10px 0; /* Reduced margin */
+    margin: 0 0 10px 0;
     line-height: 1.4;
-    flex-grow: 1; /* Allow description to grow and push footer */
+    flex-grow: 1;
 }
 
 .dish-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: auto; /* Push to the bottom */
+    margin-top: auto;
 }
 
 .price-section {
     display: flex;
     align-items: center;
-    gap: 6px; /* Reduced gap */
+    gap: 6px;
 }
 
 .current-price {
-    font-size: 16px; /* Slightly reduced font size */
+    font-size: 16px;
     font-weight: 700;
     color: #ef4444;
 }
@@ -610,19 +747,19 @@ onMounted(() => {
 .quantity-control {
     display: flex;
     align-items: center;
-    gap: 8px; /* Reduced gap */
+    gap: 8px;
 }
 
 .quantity {
-    font-size: 15px; /* Slightly reduced font size */
+    font-size: 15px;
     font-weight: 600;
     color: #1f2937;
-    min-width: 18px; /* Adjusted min-width */
+    min-width: 18px;
     text-align: center;
 }
 
 .out-of-stock-text {
-    font-size: 13px; /* Slightly reduced font size */
+    font-size: 13px;
     color: #9ca3af;
     font-weight: 500;
 }
@@ -709,6 +846,66 @@ onMounted(() => {
     border-color: #a6a9ad;
 }
 
+/* 菜品详情弹框样式 */
+.dish-detail-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+}
+
+.detail-dish-image {
+    width: 100%;
+    max-width: 400px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.detail-info-section h3 {
+    font-size: 24px;
+    color: #1f2937;
+    margin-bottom: 10px;
+}
+
+.detail-description {
+    font-size: 15px;
+    color: #6b7280;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.detail-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ef4444;
+    margin-bottom: 15px;
+}
+
+.detail-tags {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #374151;
+}
+
+.tag-item {
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+
+.detail-rating {
+    font-size: 16px;
+    color: #374151;
+    margin-top: 15px;
+}
+
+.dialog-footer {
+    text-align: center;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .top-section-container {
@@ -719,20 +916,19 @@ onMounted(() => {
     .canteen-selection-card {
         width: 100%;
         min-width: unset;
-        /* On small screens, the main card will still align to start, but its internal group will be flex-end */
-        justify-content: flex-start; /* Align content to start on small screens */
+        justify-content: flex-start;
     }
     .filter-group {
-        flex-direction: column; /* Stack filter items vertically on small screens */
-        align-items: flex-start; /* Align stacked items to the start on small screens */
+        flex-direction: column;
+        align-items: flex-start;
         width: 100%;
     }
     .filter-item {
-        width: 100%; /* On small screens, allow items to take full width */
-        align-items: flex-start; /* On small screens, align items to start */
+        width: 100%;
+        align-items: flex-start;
     }
     .compact-input {
-        width: 100%; /* On small screens, allow them to take full width */
+        width: 100%;
     }
 
     .menu-grid {
