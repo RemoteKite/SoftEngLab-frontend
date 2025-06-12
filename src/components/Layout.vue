@@ -13,12 +13,11 @@
             <el-avatar :size="32" :src="userInfo.avatar">
               {{ userInfo.username?.charAt(0).toUpperCase() }}
             </el-avatar>
-            <span class="username">{{ userInfo.username }}</span>
+            <span class="username">{{ userInfo.username || '访客' }}</span>
             <el-icon><ArrowDown /></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="profile">个人设置</el-dropdown-item>
               <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -129,26 +128,55 @@ import {
 const router = useRouter()
 const route = useRoute()
 
-// 用户信息
+// 用户信息 - 现在初始化为空，将在onMounted中从JWT解析
 const userInfo = reactive({
-  username: '管理员',
-  avatar: '',
-  role: 'admin'
+    username: '',
+    avatar: '', // 可以在JWT中包含头像URL，或根据username生成
+    role: '' // 用户角色，例如 'ADMIN', 'STAFF', 'DINER'
 })
 
 // 当前激活的菜单项
 const activeMenu = computed(() => route.path)
 
+// 从 JWT Token 中获取用户角色、用户名。
+const getUserInfoFromJwt = () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.warn('未检测到登录凭证。');
+        return { username: '访客', role: 'ANONYMOUS' };
+    }
+
+    try {
+        const payloadBase64 = token.split('.')[1]; // JWT 的第二部分是 Payload
+        const decodedPayload = JSON.parse(atob(payloadBase64));
+
+        let role = 'DINER'; // 默认角色
+        if (decodedPayload.roles && Array.isArray(decodedPayload.roles)) {
+            if (decodedPayload.roles.includes('ROLE_ADMIN')) {
+                role = 'ADMIN';
+            } else if (decodedPayload.roles.includes('ROLE_STAFF')) {
+                role = 'STAFF';
+            }
+        }
+        // 'sub' 字段通常是用户ID或用户名
+        const username = decodedPayload.sub || '未知用户';
+        // 假设头像信息不在JWT中，可以根据username生成，或从其他地方获取
+        const avatar = ''; // 这里留空，您可以根据需求从后端获取或生成
+        return { username, role, avatar };
+    } catch (error) {
+        console.error('解析JWT Token失败:', error);
+        ElMessage.error('JWT Token解析失败，请尝试重新登录。');
+        return { username: '访客', role: 'ANONYMOUS' };
+    }
+};
+
 // 下拉菜单命令处理
 const handleCommand = (command) => {
-  switch (command) {
-    case 'profile':
-      ElMessage.info('个人设置功能开发中...')
-      break
-    case 'logout':
-      handleLogout()
-      break
-  }
+    switch (command) {
+        case 'logout':
+            handleLogout()
+            break
+    }
 }
 
 // 退出登录
@@ -164,10 +192,11 @@ const handleLogout = async () => {
         }
     )
 
-    // 清除本地存储
-    localStorage.removeItem('token')
-    localStorage.removeItem('userInfo')
-    localStorage.removeItem('rememberLogin')
+        // 清除本地存储
+        localStorage.removeItem('token')
+        // 移除userInfo和rememberLogin，因为它们不再直接用于初始化
+        localStorage.removeItem('userInfo')
+        localStorage.removeItem('rememberLogin')
 
     ElMessage.success('已成功退出登录')
     router.push('/login')
@@ -179,16 +208,9 @@ const handleLogout = async () => {
 
 // 页面加载时获取用户信息
 onMounted(() => {
-  const savedUserInfo = localStorage.getItem('userInfo')
-  if (savedUserInfo) {
-    try {
-      const parsedUserInfo = JSON.parse(savedUserInfo)
-      Object.assign(userInfo, parsedUserInfo)
-    } catch (error) {
-      console.error('解析用户信息失败:', error)
-    }
-  }
-})
+    const user = getUserInfoFromJwt();
+    Object.assign(userInfo, user);
+});
 </script>
 
 <style scoped>

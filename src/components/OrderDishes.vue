@@ -87,13 +87,6 @@
                             <el-icon><Refresh /></el-icon> 重置筛选
                         </el-button>
                     </div>
-                    <!-- 移除此处购物车图标和总览 -->
-                    <!-- <div class="cart-summary" v-if="cartItems.length > 0">
-                        <el-badge :value="totalQuantity" class="cart-badge">
-                            <el-icon class="cart-icon"><ShoppingCart /></el-icon>
-                        </el-badge>
-                        <span class="cart-total">¥{{ totalAmount }}</span>
-                    </div> -->
                 </div>
             </template>
 
@@ -106,7 +99,7 @@
                         @click="showDishDetails(dish)"
                 >
                     <div class="dish-image">
-                        <img :src="dish.imageUrl || 'https://placehold.co/220x120/E0E0E0/333333?text=无图片'" :alt="dish.name" />
+                        <img :src="dish.imageUrl || 'src/assets/noImg.svg'" :alt="dish.name" />
                     </div>
 
                     <div class="dish-info">
@@ -170,49 +163,93 @@
             </el-button>
         </div>
 
-        <!-- 菜品详情弹框 -->
+        <!-- 菜品详情弹框 (包含评价功能) -->
         <el-dialog
                 v-model="showDishDetailModal"
                 :title="selectedDishDetails ? selectedDishDetails.name + ' 详情' : '菜品详情'"
-                width="500px"
+                width="650px"
                 destroy-on-close
                 center
         >
             <div v-if="selectedDishDetails" class="dish-detail-content">
-                <img :src="selectedDishDetails.imageUrl || 'https://placehold.co/400x200/E0E0E0/333333?text=无图片'" :alt="selectedDishDetails.name" class="detail-dish-image" />
-                <div class="detail-info-section">
-                    <h3>{{ selectedDishDetails.name }}</h3>
-                    <p class="detail-description">{{ selectedDishDetails.description || '暂无描述' }}</p>
-                    <p class="detail-price">价格: ¥{{ selectedDishDetails.price ? selectedDishDetails.price.toFixed(2) : 'N/A' }}</p>
+                <div class="dish-detail-main-info">
+                    <img :src="selectedDishDetails.imageUrl || 'src/assets/noImg.svg'" :alt="selectedDishDetails.name" class="detail-dish-image" />
+                    <div class="detail-info-section">
+                        <h3>{{ selectedDishDetails.name }}</h3>
+                        <p class="detail-description">{{ selectedDishDetails.description || '暂无描述' }}</p>
+                        <p class="detail-price">价格: ¥{{ selectedDishDetails.price ? selectedDishDetails.price.toFixed(2) : 'N/A' }}</p>
 
-                    <div v-if="selectedDishDetails.dietaryTagNames && selectedDishDetails.dietaryTagNames.length" class="detail-tags">
-                        <strong>膳食标签:</strong>
-                        <el-tag
-                                v-for="tag in selectedDishDetails.dietaryTagNames"
-                                :key="tag"
-                                size="small"
-                                type="info"
-                                effect="plain"
-                                class="tag-item"
-                        >{{ tag }}</el-tag>
+                        <div v-if="selectedDishDetails.dietaryTagNames && selectedDishDetails.dietaryTagNames.length" class="detail-tags">
+                            <strong>膳食标签:</strong>
+                            <el-tag
+                                    v-for="tag in selectedDishDetails.dietaryTagNames"
+                                    :key="tag"
+                                    size="small"
+                                    type="info"
+                                    effect="plain"
+                                    class="tag-item"
+                            >{{ tag }}</el-tag>
+                        </div>
+
+                        <div v-if="selectedDishDetails.allergenNames && selectedDishDetails.allergenNames.length" class="detail-tags">
+                            <strong>过敏原:</strong>
+                            <el-tag
+                                    v-for="allergen in selectedDishDetails.allergenNames"
+                                    :key="allergen"
+                                    size="small"
+                                    type="danger"
+                                    effect="plain"
+                                    class="tag-item"
+                            >{{ allergen }}</el-tag>
+                        </div>
+
+                        <p v-if="selectedDishDetails.averageRating !== undefined && selectedDishDetails.averageRating !== null" class="detail-rating">
+                            平均评分: {{ selectedDishDetails.averageRating.toFixed(1) }} ⭐
+                        </p>
+                        <p v-else class="detail-rating">平均评分: 暂无</p>
                     </div>
+                </div>
 
-                    <div v-if="selectedDishDetails.allergenNames && selectedDishDetails.allergenNames.length" class="detail-tags">
-                        <strong>过敏原:</strong>
-                        <el-tag
-                                v-for="allergen in selectedDishDetails.allergenNames"
-                                :key="allergen"
-                                size="small"
-                                type="danger"
-                                effect="plain"
-                                class="tag-item"
-                        >{{ allergen }}</el-tag>
+                <el-divider>菜品评价</el-divider>
+
+                <div v-loading="dishReviewsLoading" class="review-list-display">
+                    <el-empty v-if="!dishReviewsLoading && dishReviews.length === 0" description="暂无评价"></el-empty>
+                    <div v-for="review in dishReviews" :key="review.reviewId" class="single-review-item">
+                        <div class="review-header">
+                            <span class="reviewer-name">{{ review.username }}</span>
+                            <el-tag :type="getRatingTagType(review.rating)" size="small">
+                                {{ review.rating }} 星
+                            </el-tag>
+                            <span class="review-date">{{ formatDateTime(review.reviewDate) }}</span>
+                        </div>
+                        <p class="review-comment">{{ review.comment || '无评论' }}</p>
                     </div>
+                </div>
 
-                    <p v-if="selectedDishDetails.averageRating !== undefined && selectedDishDetails.averageRating !== null" class="detail-rating">
-                        平均评分: {{ selectedDishDetails.averageRating.toFixed(1) }} ⭐
-                    </p>
-                    <p v-else class="detail-rating">平均评分: 暂无</p>
+                <el-divider v-if="canUserAddReview">添加新评价</el-divider>
+
+                <div v-if="canUserAddReview" class="add-review-form-section">
+                    <el-form :model="addDishReviewForm" :rules="addDishReviewRules" ref="addDishReviewFormRef" label-position="top">
+                        <el-form-item label="您的评分" prop="rating">
+                            <el-rate v-model="addDishReviewForm.rating" :max="5" show-text :texts="['极差', '差', '一般', '好', '非常好']"></el-rate>
+                        </el-form-item>
+                        <el-form-item label="您的评论" prop="comment">
+                            <el-input
+                                    v-model="addDishReviewForm.comment"
+                                    type="textarea"
+                                    :rows="3"
+                                    placeholder="请输入您的评论（可选）"
+                                    maxlength="500"
+                                    show-word-limit
+                            ></el-input>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button type="primary" @click="submitDishReview">提交评价</el-button>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div v-else class="not-logged-in-message">
+                    <p>只有登录的一般用户可添加评价。</p>
                 </div>
             </div>
             <template #footer>
@@ -225,7 +262,7 @@
 </template>
 
 <script setup>
-import { reactive, computed, onMounted, watch, ref } from 'vue'
+import { reactive, computed, onMounted, watch, ref, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, ElTag } from 'element-plus'
 import {
     ShoppingCart,
@@ -233,11 +270,51 @@ import {
     Minus,
     Clock,
     Refresh,
-    Search
+    Search,
+    Star // 导入 Star 图标
 } from '@element-plus/icons-vue'
 
-// Assuming these APIs are globally available or imported from a shared file
-import { getAllCanteens, getDailyMenusByCanteenAndDate, createOrder } from '@/services/api.js';
+// 导入 API 服务
+import {
+    getAllCanteens,
+    getDailyMenusByCanteenAndDate,
+    createOrder,
+    getReviewsByDishId, // 新增：获取菜品评价
+    createReview // 新增：创建菜品评价
+} from '@/services/api.js';
+
+/**
+ * 从 JWT Token 中获取用户角色和ID。
+ * 此函数直接从 localStorage 获取 token 并进行解码。
+ */
+const getUserInfoFromJwt = () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.warn('未检测到登录凭证，您可能无法访问部分功能。');
+        return { role: 'DINER', userId: 'anonymous' }; // 默认普通用户和匿名ID
+    }
+
+    try {
+        const payloadBase64 = token.split('.')[1]; // JWT 的第二部分是 Payload
+        const decodedPayload = JSON.parse(atob(payloadBase64));
+
+        let role = 'DINER'; // 默认角色
+        if (decodedPayload.roles && Array.isArray(decodedPayload.roles)) {
+            if (decodedPayload.roles.includes('ROLE_ADMIN')) {
+                role = 'ADMIN';
+            } else if (decodedPayload.roles.includes('ROLE_STAFF')) {
+                role = 'STAFF';
+            }
+        }
+
+        const userId = decodedPayload.sub || 'unknownUser'; // 'sub' 字段通常是用户ID或用户名
+        return { role, userId };
+    } catch (error) {
+        console.error('解析JWT Token失败:', error);
+        ElMessage.error('JWT Token解析失败，请尝试重新登录。');
+        return { role: 'DINER', userId: 'invalidTokenUser' };
+    }
+};
 
 // Reactive data
 const loading = ref(false); // Global loading for fetching menu data
@@ -271,6 +348,25 @@ const selectedDishDetails = ref(null); // 用于存储当前点击的菜品详�
 const allDietaryTags = ref([]);
 const allAllergens = ref([]);
 
+// 评价相关状态
+const dishReviews = ref([]); // 存储当前菜品的评价列表
+const dishReviewsLoading = ref(false); // 评价列表加载状态
+const addDishReviewFormRef = ref(null); // 添加评价表单的 ref
+const addDishReviewForm = reactive({ // 添加评价的表单数据
+    rating: 5,
+    comment: '',
+});
+const addDishReviewRules = reactive({ // 添加评价的表单验证规则
+    rating: [
+        { required: true, message: '请选择评分', trigger: 'change' },
+        { type: 'number', min: 1, max: 5, message: '评分必须在1到5之间', trigger: 'change' }
+    ],
+    comment: [{ max: 500, message: '评论不能超过500个字符', trigger: 'blur' }],
+});
+
+const userRole = ref(null); // 当前用户的角色，用于判断是否可以添加评价
+const currentUserId = ref(null); // 当前用户的ID
+
 // Helper function: Extract error message
 const getErrorMessage = (error) => {
     if (error.response && error.response.data && error.response.data.message) {
@@ -281,6 +377,36 @@ const getErrorMessage = (error) => {
     }
     return '操作失败！';
 };
+
+// Helper function: Get tag type for review rating
+const getRatingTagType = (rating) => {
+    if (rating >= 4) return 'success';
+    if (rating >= 3) return ''; // Default type (info)
+    return 'danger';
+};
+
+// Helper function: Format date and time
+const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return '';
+    try {
+        const date = new Date(dateTimeString);
+        if (isNaN(date.getTime())) {
+            const parts = dateTimeString.split('T');
+            const datePart = parts[0];
+            const timePart = parts[1] ? parts[1].substring(0, 8) : '';
+            return `${datePart} ${timePart}`;
+        }
+        return date.toLocaleString();
+    } catch (e) {
+        console.error("日期时间格式化失败:", dateTimeString, e);
+        return dateTimeString;
+    }
+};
+
+// Computed property: Check if user can add review
+const canUserAddReview = computed(() => {
+    return userRole.value === 'DINER' && currentUserId.value && currentUserId.value !== 'anonymous' && currentUserId.value !== 'invalidTokenUser';
+});
 
 // Computed properties
 const filteredDishes = computed(() => {
@@ -460,10 +586,62 @@ const handlePageChange = (page) => {
     currentPage.value = page;
 };
 
-// 显示菜品详情弹框
-const showDishDetails = (dish) => {
+// 显示菜品详情弹框并加载评价
+const showDishDetails = async (dish) => {
     selectedDishDetails.value = { ...dish }; // 复制菜品信息，避免直接修改
     showDishDetailModal.value = true;
+    dishReviews.value = []; // 清空之前的评价
+    addDishReviewForm.rating = 5; // 重置添加评价表单
+    addDishReviewForm.comment = '';
+    await fetchDishReviews(dish.dishId); // 加载该菜品的评价
+};
+
+// 获取菜品评价
+const fetchDishReviews = async (dishId) => {
+    dishReviewsLoading.value = true;
+    try {
+        const res = await getReviewsByDishId(dishId);
+        dishReviews.value = res.data;
+    } catch (error) {
+        ElMessage.error(`加载评价失败: ${getErrorMessage(error)}`);
+        console.error('加载菜品评价失败:', error);
+    } finally {
+        dishReviewsLoading.value = false;
+    }
+};
+
+// 提交菜品评价
+const submitDishReview = async () => {
+    if (!addDishReviewFormRef.value) return;
+    try {
+        await addDishReviewFormRef.value.validate(); // 验证表单
+
+        await ElMessageBox.confirm(
+            `确定为菜品 "${selectedDishDetails.value.name}" 提交评价吗？`,
+            '确认提交评价',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }
+        );
+
+        const payload = {
+            dishId: selectedDishDetails.value.dishId,
+            rating: addDishReviewForm.rating,
+            comment: addDishReviewForm.comment,
+        };
+        await createReview(payload);
+        ElMessage.success('评价提交成功！');
+        addDishReviewForm.rating = 5; // 重置表单
+        addDishReviewForm.comment = '';
+        await fetchDishReviews(selectedDishDetails.value.dishId); // 刷新评价列表
+    } catch (error) {
+        if (error !== 'cancel') { // 忽略用户取消操作
+            ElMessage.error(`提交评价失败: ${getErrorMessage(error)}`);
+            console.error('提交评价失败:', error);
+        }
+    }
 };
 
 const proceedToCheckout = async () => {
@@ -532,6 +710,10 @@ watch([() => filters.selectedDietaryTags, () => filters.selectedAllergens], () =
 
 // Lifecycle Hooks
 onMounted(() => {
+    const userInfo = getUserInfoFromJwt(); // 获取用户角色和ID
+    userRole.value = userInfo.role;
+    currentUserId.value = userInfo.userId;
+
     fetchCanteens();
     // Set default reservation date to today
     filters.reservationDate = new Date().toISOString().slice(0, 10);
@@ -850,9 +1032,15 @@ onMounted(() => {
 .dish-detail-content {
     display: flex;
     flex-direction: column;
+    padding: 0px 20px 20px; /* Adjusted padding */
+}
+
+.dish-detail-main-info {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 20px;
+    margin-bottom: 20px;
 }
 
 .detail-dish-image {
@@ -862,6 +1050,10 @@ onMounted(() => {
     object-fit: cover;
     border-radius: 8px;
     margin-bottom: 20px;
+}
+
+.detail-info-section {
+    width: 100%;
 }
 
 .detail-info-section h3 {
@@ -889,11 +1081,15 @@ onMounted(() => {
     margin-bottom: 10px;
     font-size: 14px;
     color: #374151;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center; /* Center tags */
 }
 
 .tag-item {
-    margin-right: 8px;
-    margin-bottom: 8px;
+    margin-right: 0px; /* Adjusted for gap */
+    margin-bottom: 0px; /* Adjusted for gap */
 }
 
 .detail-rating {
@@ -906,7 +1102,67 @@ onMounted(() => {
     text-align: center;
 }
 
-/* 响应式设计 */
+/* Review modal styles */
+.review-list-display {
+    max-height: 250px; /* Scrollable review list */
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.single-review-item {
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.single-review-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.review-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.reviewer-name {
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+}
+
+.review-date {
+    font-size: 12px;
+    color: #909399;
+}
+
+.review-comment {
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.5;
+    margin-top: 0;
+}
+
+.add-review-form-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.not-logged-in-message {
+    text-align: center;
+    color: #909399;
+    font-size: 14px;
+    margin-top: 20px;
+}
+
+
+/* Responsive design */
 @media (max-width: 768px) {
     .top-section-container {
         flex-direction: column;
@@ -964,6 +1220,12 @@ onMounted(() => {
     .dish-filter-controls .el-input {
         flex-grow: 1;
         margin-right: 0 !important;
+    }
+
+    .dish-detail-main-info {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
     }
 }
 </style>

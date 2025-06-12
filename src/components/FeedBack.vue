@@ -1,926 +1,517 @@
 <template>
-  <div class="rating-system">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <h1>菜品评价与反馈</h1>
-      <p class="header-desc">您的意见是我们改进的动力，请为您品尝的菜品进行评价</p>
-    </div>
+    <div class="review-management-container">
+        <h1 class="page-title">菜品评价与反馈</h1>
 
-    <!-- 筛选和搜索 -->
-    <el-card class="filter-card">
-      <el-row :gutter="16" class="filter-row">
-        <el-col :span="6">
-          <el-select v-model="filterCanteen" placeholder="选择餐厅" clearable>
-            <el-option label="全部餐厅" value=""></el-option>
-            <el-option label="第一餐厅" value="canteen1"></el-option>
-            <el-option label="第二餐厅" value="canteen2"></el-option>
-            <el-option label="第三餐厅" value="canteen3"></el-option>
-          </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-select v-model="ratingFilter" placeholder="评分筛选" clearable>
-            <el-option label="全部评分" value=""></el-option>
-            <el-option label="5星好评" value="5"></el-option>
-            <el-option label="4星以上" value="4"></el-option>
-            <el-option label="3星以上" value="3"></el-option>
-            <el-option label="2星以下" value="2"></el-option>
-          </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-input
-              v-model="searchKeyword"
-              placeholder="搜索菜品名称"
-              clearable
-              @input="handleSearch"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-        </el-col>
-      </el-row>
-    </el-card>
-
-    <!-- 我的评价历史 -->
-    <el-card class="my-reviews-card">
-      <template #header>
-        <div class="card-header">
-          <h3>我的评价历史</h3>
-          <el-button type="primary" @click="showAddReviewDialog = true">
-            <el-icon><Plus /></el-icon>
-            添加新评价
-          </el-button>
-        </div>
-      </template>
-
-      <div class="reviews-list">
-        <div
-            v-for="review in myReviews"
-            :key="review.id"
-            class="review-item"
-        >
-          <div class="review-header">
-            <div class="dish-info">
-              <img :src="review.dishImage" :alt="review.dishName" class="dish-image">
-              <div class="dish-details">
-                <h4>{{ review.dishName }}</h4>
-                <p class="restaurant-name">{{ review.canteenName }}</p>
-                <div class="rating-display">
-                  <el-rate
-                      v-model="review.rating"
-                      disabled
-                      show-score
-                      text-color="#ff9900"
-                  />
+        <el-card class="action-card mb-4">
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label>当前角色:</label>
+                    <span>{{ getUserRoleText(userRole) || '加载中...' }}</span>
                 </div>
-              </div>
-            </div>
-            <div class="review-meta">
-              <span class="review-date">{{ formatDate(review.createTime) }}</span>
-              <div class="review-actions">
-                <el-button
-                    size="small"
-                    type="text"
-                    @click="editReview(review)"
-                >
-                  编辑
+                <div class="filter-item" v-if="userRole === 'DINER' && currentUserId">
+                    <label>我的用户ID:</label>
+                    <span>{{ currentUserId }}</span>
+                </div>
+                <el-button type="primary" @click="fetchReviews" :loading="loading">
+                    <el-icon><Refresh /></el-icon> 刷新评价列表
                 </el-button>
-                <el-button
-                    size="small"
-                    type="text"
-                    @click="deleteReview(review.id)"
-                    class="delete-btn"
-                >
-                  删除
-                </el-button>
-              </div>
             </div>
-          </div>
+        </el-card>
 
-          <div class="review-content">
-            <p>{{ review.comment }}</p>
-            <div v-if="review.images && review.images.length" class="review-images">
-              <img
-                  v-for="(image, index) in review.images"
-                  :key="index"
-                  :src="image"
-                  :alt="`评价图片${index + 1}`"
-                  class="review-image"
-                  @click="previewImage(image)"
-              >
-            </div>
-          </div>
-
-          <div class="review-tags">
-            <el-tag
-                v-for="tag in review.tags"
-                :key="tag"
-                size="small"
-                class="review-tag"
-            >
-              {{ tag }}
-            </el-tag>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="!myReviews.length" class="empty-state">
-        <el-empty description="暂无评价记录">
-          <el-button type="primary" @click="showAddReviewDialog = true">
-            立即评价
-          </el-button>
-        </el-empty>
-      </div>
-    </el-card>
-
-    <!-- 热门菜品评价 -->
-    <el-card class="popular-dishes-card">
-      <template #header>
-        <h3>热门菜品评价</h3>
-      </template>
-
-      <el-row :gutter="16">
-        <el-col
-            v-for="dish in popularDishes"
-            :key="dish.id"
-            :span="8"
-        >
-          <el-card class="dish-card" shadow="hover">
-            <img :src="dish.image" :alt="dish.name" class="dish-cover">
-            <div class="dish-info-content">
-              <h4>{{ dish.name }}</h4>
-              <p class="dish-restaurant">{{ dish.canteenName }}</p>
-              <div class="dish-rating">
-                <el-rate
-                    v-model="dish.averageRating"
-                    disabled
-                    show-score
-                    text-color="#ff9900"
-                />
-                <span class="review-count">({{ dish.reviewCount }}人评价)</span>
-              </div>
-              <div class="dish-tags">
-                <el-tag
-                    v-for="tag in dish.popularTags"
-                    :key="tag"
-                    size="small"
-                    type="info"
-                >
-                  {{ tag }}
-                </el-tag>
-              </div>
-              <el-button
-                  type="primary"
-                  size="small"
-                  @click="rateThisDish(dish)"
-                  class="rate-btn"
-              >
-                我要评价
-              </el-button>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </el-card>
-
-    <!-- 添加/编辑评价对话框 -->
-    <el-dialog
-        v-model="showAddReviewDialog"
-        :title="editingReview ? '编辑评价' : '添加评价'"
-        width="600px"
-        class="review-dialog"
-    >
-      <el-form
-          ref="reviewFormRef"
-          :model="reviewForm"
-          :rules="reviewRules"
-          label-width="80px"
-      >
-        <el-form-item label="选择餐厅" prop="canteenId">
-          <el-select
-              v-model="reviewForm.canteenId"
-              placeholder="请选择餐厅"
-              @change="handleCanteenChange"
-          >
-            <el-option label="第一餐厅" value="canteen1"></el-option>
-            <el-option label="第二餐厅" value="canteen2"></el-option>
-            <el-option label="第三餐厅" value="canteen3"></el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="选择菜品" prop="dishId">
-          <el-select
-              v-model="reviewForm.dishId"
-              placeholder="请选择菜品"
-              filterable
-          >
-            <el-option
-                v-for="dish in availableDishes"
-                :key="dish.id"
-                :label="dish.name"
-                :value="dish.id"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="评分" prop="rating">
-          <el-rate
-              v-model="reviewForm.rating"
-              show-text
-              :texts="['很差', '较差', '一般', '推荐', '强推']"
-          />
-        </el-form-item>
-
-        <el-form-item label="评价内容" prop="comment">
-          <el-input
-              v-model="reviewForm.comment"
-              type="textarea"
-              :rows="4"
-              placeholder="请分享您对这道菜的看法..."
-              maxlength="500"
-              show-word-limit
-          />
-        </el-form-item>
-
-        <el-form-item label="标签">
-          <div class="tag-selection">
-            <el-checkbox-group v-model="reviewForm.tags">
-              <el-checkbox label="味道好">味道好</el-checkbox>
-              <el-checkbox label="分量足">分量足</el-checkbox>
-              <el-checkbox label="价格实惠">价格实惠</el-checkbox>
-              <el-checkbox label="新鲜">新鲜</el-checkbox>
-              <el-checkbox label="口感佳">口感佳</el-checkbox>
-              <el-checkbox label="营养丰富">营养丰富</el-checkbox>
-              <el-checkbox label="偏咸">偏咸</el-checkbox>
-              <el-checkbox label="偏淡">偏淡</el-checkbox>
-              <el-checkbox label="偏辣">偏辣</el-checkbox>
-              <el-checkbox label="温度适中">温度适中</el-checkbox>
-            </el-checkbox-group>
-          </div>
-        </el-form-item>
-
-        <el-form-item label="上传图片">
-          <el-upload
-              v-model:file-list="reviewForm.imageList"
-              action="#"
-              list-type="picture-card"
-              :auto-upload="false"
-              :limit="3"
-              accept="image/*"
-          >
-            <el-icon><Plus /></el-icon>
-            <template #tip>
-              <div class="el-upload__tip">最多上传3张图片</div>
+        <el-card class="review-list-card">
+            <template #header>
+                <div class="card-header-title">
+                    <span>{{ userRole === 'DINER' ? '我的评价' : '所有评价' }}</span>
+                </div>
             </template>
-          </el-upload>
-        </el-form-item>
-      </el-form>
+            <el-table :data="filteredReviewsDisplay" v-loading="loading" style="width: 100%" class="review-table" empty-text="暂无评价数据">
+                <el-table-column prop="reviewId" label="评价ID" width="120" sortable></el-table-column>
+                <el-table-column prop="username" label="评价人" width="120"></el-table-column>
+                <el-table-column prop="dishName" label="菜品名称" width="150"></el-table-column>
+                <el-table-column prop="rating" label="评分" width="100" sortable>
+                    <template #default="{ row }">
+                        <el-tag :type="getRatingTagType(row.rating)">
+                            {{ row.rating }} 星
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="comment" label="评论" min-width="200"></el-table-column>
+                <el-table-column prop="reviewDate" label="评价时间" width="180" sortable>
+                    <template #default="{ row }">
+                        {{ formatDateTime(row.reviewDate) }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="操作" min-width="180" fixed="right">
+                    <template #default="{ row }">
+                        <el-button
+                                size="small"
+                                type="warning"
+                                @click="showEditReviewDialog(row)"
+                                :disabled="!canManageReview(row)"
+                        >
+                            编辑评价
+                        </el-button>
+                        <el-button
+                                size="small"
+                                type="danger"
+                                @click="confirmDeleteReview(row)"
+                                :disabled="!canManageReview(row)"
+                        >
+                            删除评价
+                        </el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </el-card>
 
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="showAddReviewDialog = false">取消</el-button>
-          <el-button type="primary" @click="submitReview">
-            {{ editingReview ? '更新评价' : '提交评价' }}
-          </el-button>
-        </span>
-      </template>
-    </el-dialog>
-
-    <!-- 图片预览对话框 -->
-    <el-dialog v-model="showImagePreview" title="图片预览" width="50%">
-      <img :src="previewImageUrl" alt="预览图片" style="width: 100%;">
-    </el-dialog>
-  </div>
+        <!-- 编辑评价弹框 -->
+        <el-dialog
+                v-model="showEditReviewModal"
+                title="编辑菜品评价"
+                width="500px"
+                destroy-on-close
+                center
+        >
+            <div class="edit-review-content">
+                <p>评价ID: <strong>{{ reviewToEdit?.reviewId }}</strong></p>
+                <p>菜品名称: <strong>{{ reviewToEdit?.dishName }}</strong></p>
+                <el-form :model="editReviewForm" :rules="editReviewRules" ref="editReviewFormRef" label-position="top" class="mt-4">
+                    <el-form-item label="评分" prop="rating">
+                        <el-rate v-model="editReviewForm.rating" :max="5" show-text :texts="['极差', '差', '一般', '好', '非常好']"></el-rate>
+                    </el-form-item>
+                    <el-form-item label="评论" prop="comment">
+                        <el-input
+                                v-model="editReviewForm.comment"
+                                type="textarea"
+                                :rows="3"
+                                placeholder="请输入您的评论"
+                                maxlength="500"
+                                show-word-limit
+                        ></el-input>
+                    </el-form-item>
+                </el-form>
+            </div>
+            <template #footer>
+                <span class="dialog-footer">
+                    <el-button @click="showEditReviewModal = false">取消</el-button>
+                    <el-button type="primary" @click="updateReviewConfirmed">确认更新</el-button>
+                </span>
+            </template>
+        </el-dialog>
+    </div>
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { reactive, computed, onMounted, ref, watch, nextTick } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { Refresh, Plus, Search } from '@element-plus/icons-vue';
+
+// 导入 API 服务
 import {
-  Search,
-  Plus,
-  Star,
-  Picture
-} from '@element-plus/icons-vue'
+    getAllReviews,
+    getReviewsByUserId,
+    getReviewsByCurrentUser,
+    updateReview,
+    deleteReview,
+} from '@/services/api.js';
 
-// 响应式数据
-const filterCanteen = ref('')
-const filterCategory = ref('')
-const ratingFilter = ref('')
-const searchKeyword = ref('')
-const showAddReviewDialog = ref(false)
-const showImagePreview = ref(false)
-const previewImageUrl = ref('')
-const reviewFormRef = ref()
-const editingReview = ref(null)
+/**
+ * 从 JWT Token 中获取用户角色和ID。
+ * 此函数直接从 localStorage 获取 token 并进行解码。
+ */
+const getUserInfoFromJwt = () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.warn('未检测到登录凭证，您可能无法访问部分功能。');
+        return { role: 'ANONYMOUS', userId: null }; // 未登录用户，角色设为ANONYMOUS，userId为null
+    }
 
-// 我的评价列表
-const myReviews = ref([
-  {
-    id: 1,
-    dishId: 'dish1',
-    dishName: '红烧肉',
-    dishImage: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=300&h=200&fit=crop',
-    canteenName: '第一餐厅',
-    rating: 5,
-    comment: '味道很棒，肉质鲜嫩，肥瘦相间，入口即化。调料搭配恰到好处，不会过于油腻。',
-    tags: ['味道好', '分量足', '口感佳'],
-    images: [
-      'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=300&fit=crop',
-      'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop'
-    ],
-    createTime: new Date('2024-01-15T12:30:00')
-  },
-  {
-    id: 2,
-    dishId: 'dish2',
-    dishName: '麻婆豆腐',
-    dishImage: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=300&h=200&fit=crop',
-    canteenName: '第二餐厅',
-    rating: 4,
-    comment: '经典川菜，豆腐嫩滑，麻辣适中，很下饭。但是有点偏咸，建议减少一点盐分。',
-    tags: ['味道好', '偏辣', '偏咸'],
-    images: [],
-    createTime: new Date('2024-01-14T18:45:00')
-  }
-])
+    try {
+        const payloadBase64 = token.split('.')[1]; // JWT 的第二部分是 Payload
+        const decodedPayload = JSON.parse(atob(payloadBase64));
 
-// 热门菜品
-const popularDishes = ref([
-  {
-    id: 'dish1',
-    name: '红烧肉',
-    image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=300&h=200&fit=crop',
-    canteenName: '第一餐厅',
-    averageRating: 4.5,
-    reviewCount: 128,
-    popularTags: ['味道好', '分量足', '口感佳']
-  },
-  {
-    id: 'dish2',
-    name: '麻婆豆腐',
-    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=300&h=200&fit=crop',
-    canteenName: '第二餐厅',
-    averageRating: 4.2,
-    reviewCount: 96,
-    popularTags: ['味道好', '偏辣', '下饭']
-  },
-  {
-    id: 'dish3',
-    name: '糖醋里脊',
-    image: 'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=300&h=200&fit=crop',
-    canteenName: '第三餐厅',
-    averageRating: 4.7,
-    reviewCount: 156,
-    popularTags: ['酸甜', '外酥内嫩', '色泽诱人']
-  }
-])
-
-// 可选菜品列表
-const availableDishes = ref([
-  { id: 'dish1', name: '红烧肉', canteenId: 'canteen1' },
-  { id: 'dish2', name: '麻婆豆腐', canteenId: 'canteen2' },
-  { id: 'dish3', name: '糖醋里脊', canteenId: 'canteen3' },
-  { id: 'dish4', name: '宫保鸡丁', canteenId: 'canteen1' },
-  { id: 'dish5', name: '西红柿鸡蛋', canteenId: 'canteen2' }
-])
-
-// 评价表单
-const reviewForm = reactive({
-  canteenId: '',
-  dishId: '',
-  rating: 0,
-  comment: '',
-  tags: [],
-  imageList: []
-})
-
-// 表单验证规则
-const reviewRules = {
-  canteenId: [
-    { required: true, message: '请选择餐厅', trigger: 'change' }
-  ],
-  dishId: [
-    { required: true, message: '请选择菜品', trigger: 'change' }
-  ],
-  rating: [
-    { required: true, message: '请给出评分', trigger: 'change' },
-    {
-      validator: (rule, value, callback) => {
-        if (value === 0) {
-          callback(new Error('请给出评分'))
-        } else {
-          callback()
+        let role = 'DINER'; // 默认角色
+        if (decodedPayload.roles && Array.isArray(decodedPayload.roles)) {
+            if (decodedPayload.roles.includes('ROLE_ADMIN')) {
+                role = 'ADMIN';
+            } else if (decodedPayload.roles.includes('ROLE_STAFF')) {
+                role = 'STAFF';
+            }
         }
-      },
-      trigger: 'change'
+
+        const userId = decodedPayload.sub || 'unknownUser'; // 'sub' 字段通常是用户ID或用户名
+        return { role, userId };
+    } catch (error) {
+        console.error('解析JWT Token失败:', error);
+        ElMessage.error('JWT Token解析失败，请尝试重新登录。');
+        return { role: 'ANONYMOUS', userId: null }; // 解析失败，设为ANONYMOUS
     }
-  ],
-  comment: [
-    { required: true, message: '请填写评价内容', trigger: 'blur' },
-    { min: 5, message: '评价内容至少5个字符', trigger: 'blur' }
-  ]
-}
+};
 
-// 方法定义
-const handleSearch = () => {
-  // 搜索逻辑
-  console.log('搜索关键词:', searchKeyword.value)
-}
+const userRole = ref(null); // 当前登录用户的角色
+const currentUserId = ref(null); // 当前登录用户的ID
 
-const handleCanteenChange = () => {
-  // 重置菜品选择
-  reviewForm.dishId = ''
-}
+const loading = ref(false);
+const rawReviews = ref([]); // 存储从后端获取的所有评价数据（ADMIN/STAFF）
+const reviews = ref([]); // 实际绑定到表格的数据（DINER或经过前端筛选后的结果）
 
-const formatDate = (date) => {
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-const previewImage = (imageUrl) => {
-  previewImageUrl.value = imageUrl
-  showImagePreview.value = true
-}
-
-const editReview = (review) => {
-  editingReview.value = review
-  Object.assign(reviewForm, {
-    canteenId: review.canteenId,
-    dishId: review.dishId,
-    rating: review.rating,
-    comment: review.comment,
-    tags: [...review.tags],
-    imageList: []
-  })
-  showAddReviewDialog.value = true
-}
-
-const deleteReview = async (reviewId) => {
-  try {
-    await ElMessageBox.confirm('确定要删除这条评价吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-
-    const index = myReviews.value.findIndex(r => r.id === reviewId)
-    if (index > -1) {
-      myReviews.value.splice(index, 1)
-      ElMessage.success('评价删除成功')
-    }
-  } catch {
-    // 用户取消删除
-  }
-}
-
-const rateThisDish = (dish) => {
-  reviewForm.dishId = dish.id
-  reviewForm.canteenId = dish.canteenId || 'canteen1'
-  showAddReviewDialog.value = true
-}
-
-const submitReview = async () => {
-  try {
-    await reviewFormRef.value.validate()
-
-    // 模拟提交评价
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    if (editingReview.value) {
-      // 更新现有评价
-      const index = myReviews.value.findIndex(r => r.id === editingReview.value.id)
-      if (index > -1) {
-        Object.assign(myReviews.value[index], {
-          rating: reviewForm.rating,
-          comment: reviewForm.comment,
-          tags: [...reviewForm.tags],
-          updateTime: new Date()
-        })
-      }
-      ElMessage.success('评价更新成功')
-    } else {
-      // 添加新评价
-      const dishInfo = availableDishes.value.find(d => d.id === reviewForm.dishId)
-      const newReview = {
-        id: Date.now(),
-        dishId: reviewForm.dishId,
-        dishName: dishInfo?.name || '未知菜品',
-        dishImage: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=300&h=200&fit=crop',
-        canteenName: getCanteenName(reviewForm.canteenId),
-        rating: reviewForm.rating,
-        comment: reviewForm.comment,
-        tags: [...reviewForm.tags],
-        images: [],
-        createTime: new Date()
-      }
-      myReviews.value.unshift(newReview)
-      ElMessage.success('评价提交成功')
-    }
-
-    // 重置表单
-    resetForm()
-    showAddReviewDialog.value = false
-    editingReview.value = null
-  } catch (error) {
-    console.error('提交评价失败:', error)
-  }
-}
-
-const getCanteenName = (canteenId) => {
-  const names = {
-    'canteen1': '第一餐厅',
-    'canteen2': '第二餐厅',
-    'canteen3': '第三餐厅'
-  }
-  return names[canteenId] || '未知餐厅'
-}
-
-const resetForm = () => {
-  Object.assign(reviewForm, {
-    canteenId: '',
-    dishId: '',
-    rating: 0,
+// 编辑评价弹框相关
+const showEditReviewModal = ref(false);
+const reviewToEdit = ref(null); // 存储待编辑的评价对象
+const editReviewFormRef = ref(null);
+const editReviewForm = reactive({
+    rating: 5,
     comment: '',
-    tags: [],
-    imageList: []
-  })
-}
+});
 
-// 生命周期钩子
+const editReviewRules = reactive({
+    rating: [
+        { required: true, message: '请选择评分', trigger: 'change' },
+        { type: 'number', min: 1, max: 5, message: '评分必须在1到5之间', trigger: 'change' }
+    ],
+    comment: [{ max: 500, message: '评论不能超过500个字符', trigger: 'blur' }],
+});
+
+// 辅助函数：获取用户角色的中文文本
+const getUserRoleText = (role) => {
+    switch (role) {
+        case 'ADMIN': return '管理员';
+        case 'STAFF': return '员工';
+        case 'DINER': return '普通用户';
+        case 'ANONYMOUS': return '未登录用户'; // 新增未登录角色文本
+        default: return '未知';
+    }
+};
+
+// 辅助函数：根据评分获取标签类型
+const getRatingTagType = (rating) => {
+    if (rating >= 4) return 'success';
+    if (rating >= 3) return ''; // Default type (info)
+    return 'danger';
+};
+
+// 辅助函数：格式化日期时间
+const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return '';
+    try {
+        const date = new Date(dateTimeString);
+        if (isNaN(date.getTime())) {
+            const parts = dateTimeString.split('T');
+            const datePart = parts[0];
+            const timePart = parts[1] ? parts[1].substring(0, 8) : '';
+            return `${datePart} ${timePart}`;
+        }
+        return date.toLocaleString();
+    } catch (e) {
+        console.error("日期时间格式化失败:", dateTimeString, e);
+        return dateTimeString;
+    }
+};
+
+// 权限判断：是否可以管理（编辑/删除）此评价
+// 根据用户要求，只要用户登录（role不是ANONYMOUS），就可以尝试编辑和删除，
+// 具体的权限校验交给后端处理。
+const canManageReview = (review) => {
+    // 只要用户已登录 (userRole不是ANONYMOUS)，就允许尝试操作
+    return userRole.value !== 'ANONYMOUS' && userRole.value !== null;
+};
+
+// 获取评价列表
+const fetchReviews = async () => {
+    // 如果用户角色未确定，或确定为未登录用户，则不加载评价
+    if (userRole.value === null || userRole.value === 'ANONYMOUS') {
+        console.log('用户未登录，暂不加载评价。');
+        reviews.value = []; // 清空可能残留的数据
+        rawReviews.value = [];
+        loading.value = false;
+        return;
+    }
+
+    loading.value = true;
+    rawReviews.value = [];
+    reviews.value = [];
+
+    try {
+        let response;
+        if (userRole.value === 'DINER') {
+            // 对 DINER 角色使用 getReviewsByCurrentUser API
+            response = await getReviewsByCurrentUser();
+            reviews.value = response.data; // DINER 直接绑定到 reviews
+        } else {
+            // ADMIN 或 STAFF 获取所有评价
+            response = await getAllReviews();
+            rawReviews.value = response.data; // ADMIN/STAFF 将所有评价存储到 rawReviews
+        }
+        ElMessage.success('评价列表加载成功！');
+    } catch (error) {
+        ElMessage.error(`加载评价失败: ${error.message || '未知错误'}`);
+        console.error('加载评价失败:', error);
+    } finally {
+        loading.value = false;
+    }
+};
+
+// computed 属性：用于根据用户角色显示正确的评价数据
+const filteredReviewsDisplay = computed(() => {
+    if (userRole.value === 'DINER') {
+        return reviews.value;
+    } else {
+        return rawReviews.value; // ADMIN/STAFF 直接显示所有评价
+    }
+});
+
+// 显示编辑评价弹框
+const showEditReviewDialog = (review) => {
+    // 客户端仅做最基本的前置判断：用户是否已登录。
+    // 具体权限校验会在后端API层面进行。
+    if (!canManageReview(review)) {
+        ElMessage.warning('您没有权限编辑此评价，请检查您的登录状态。');
+        return;
+    }
+    reviewToEdit.value = { ...review }; // 复制评价对象
+    editReviewForm.rating = review.rating;
+    editReviewForm.comment = review.comment;
+    showEditReviewModal.value = true;
+    nextTick(() => {
+        editReviewFormRef.value?.clearValidate(); // 清除之前的验证状态
+    });
+};
+
+// 确认更新评价
+const updateReviewConfirmed = async () => {
+    if (!editReviewFormRef.value) return;
+
+    try {
+        await editReviewFormRef.value.validate(); // 验证表单
+
+        await ElMessageBox.confirm(
+            `确定更新此评价吗？`,
+            '确认更新评价',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }
+        );
+
+        // 构建符合 RatingReviewRequest 的参数
+        const payload = {
+            dishId: reviewToEdit.value.dishId, // dishId 是必需的
+            rating: editReviewForm.rating,
+            comment: editReviewForm.comment
+        };
+
+        await updateReview(reviewToEdit.value.reviewId, payload);
+        ElMessage.success('评价更新成功！');
+        showEditReviewModal.value = false;
+        fetchReviews(); // 刷新评价列表
+    } catch (error) {
+        if (error !== 'cancel') {
+            ElMessage.error(`更新评价失败: ${error.message || '未知错误'}`);
+            console.error('更新评价失败:', error);
+        }
+    }
+};
+
+// 确认删除评价
+const confirmDeleteReview = async (review) => {
+    // 客户端仅做最基本的前置判断：用户是否已登录。
+    // 具体权限校验会在后端API层面进行。
+    if (!canManageReview(review)) {
+        ElMessage.warning('您没有权限删除此评价，请检查您的登录状态。');
+        return;
+    }
+    try {
+        await ElMessageBox.confirm(
+            `确定要删除此评价 (ID: ${review.reviewId}) 吗？此操作不可逆！`,
+            '确认删除评价',
+            {
+                confirmButtonText: '确定删除',
+                cancelButtonText: '取消',
+                type: 'danger'
+            }
+        );
+
+        await deleteReview(review.reviewId);
+        ElMessage.success('评价删除成功！');
+        fetchReviews(); // 刷新评价列表
+    } catch (error) {
+        if (error !== 'cancel') {
+            ElMessage.error(`删除评价失败: ${error.message || '未知错误'}`);
+            console.error('删除评价失败:', error);
+        }
+    }
+};
+
+// 监听 userRole 的变化以触发评价数据的首次获取或重新获取
+watch(userRole, () => {
+    if (userRole.value) { // 确保 userRole 已经确定（不为null）
+        fetchReviews();
+    }
+}, { immediate: true });
+
+// mounted 钩子：获取当前登录用户的信息
 onMounted(() => {
-  // 初始化数据
-})
+    const userInfo = getUserInfoFromJwt();
+    userRole.value = userInfo.role;
+    currentUserId.value = userInfo.userId;
+});
 </script>
 
 <style scoped>
-/* 全局滚动条样式 */
-html {
-  scroll-behavior: smooth;
+.review-management-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
-body {
-  overflow-x: hidden;
-  padding-bottom: 40px; /* 确保底部有足够空间 */
+.page-title {
+    font-size: 28px;
+    color: #1f2937;
+    margin-bottom: 24px;
+    font-weight: 600;
 }
 
-/* 自定义滚动条样式 */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #e5e7eb #f9fafb;
+.action-card {
+    margin-bottom: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-*::-webkit-scrollbar {
-  width: 8px;
+.filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
 }
 
-*::-webkit-scrollbar-track {
-  background: #f9fafb;
-  border-radius: 4px;
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-*::-webkit-scrollbar-thumb {
-  background: #e5e7eb;
-  border-radius: 4px;
-  transition: background 0.3s ease;
+.filter-item label {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+    white-space: nowrap;
 }
 
-*::-webkit-scrollbar-thumb:hover {
-  background: #d1d5db;
+.review-list-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.rating-system {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  padding-bottom: 60px; /* 增加底部内边距 */
-  min-height: 100vh; /* 确保有足够的高度 */
-  box-sizing: border-box;
+.card-header-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
 }
 
-.page-header {
-  text-align: center;
-  margin-bottom: 30px;
+.review-table {
+    margin-top: 16px;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.page-header h1 {
-  font-size: 32px;
-  color: #1f2937;
-  margin: 0 0 12px 0;
-  font-weight: 600;
+/* 弹框内容样式 */
+.edit-review-content p,
+.add-review-content p { /* Added .add-review-content */
+    font-size: 15px;
+    color: #374151;
+    line-height: 1.8;
+    margin-bottom: 8px;
 }
 
-.header-desc {
-  color: #6b7280;
-  font-size: 16px;
-  margin: 0;
+.edit-review-content p strong,
+.add-review-content p strong { /* Added .add-review-content */
+    color: #1f2937;
 }
 
-.filter-card {
-  margin-bottom: 24px;
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+/* 菜品详情显示样式 */
+.dish-details-display {
+    border: 1px dashed #dcdfe6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    background-color: #fcfcfc;
 }
 
-.filter-row {
-  align-items: center;
+.dish-details-display h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #303133;
+    font-size: 14px;
 }
 
-.my-reviews-card,
-.popular-dishes-card {
-  margin-bottom: 40px; /* 增加卡片间距 */
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+.dish-details-display p {
+    margin-bottom: 5px;
 }
 
-/* 确保最后一个卡片有足够的底部空间 */
-.popular-dishes-card {
-  margin-bottom: 80px;
+/* Element Plus 覆盖 */
+.el-button {
+    border-radius: 4px;
 }
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.el-button--primary {
+    background-color: #409EFF;
+    border-color: #409EFF;
 }
-
-.card-header h3 {
-  margin: 0;
-  font-size: 18px;
-  color: #1f2937;
-  font-weight: 600;
+.el-button--primary:hover {
+    background-color: #66b1ff;
+    border-color: #66b1ff;
 }
-
-.review-item {
-  padding: 20px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  transition: all 0.3s ease;
+.el-button--warning {
+    background-color: #E6A23C;
+    border-color: #E6A23C;
 }
-
-.review-item:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.el-button--warning:hover {
+    background-color: #ebb563;
+    border-color: #ebb563;
 }
-
-.review-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
+.el-button--danger {
+    background-color: #F56C6C;
+    border-color: #F56C6C;
 }
-
-.dish-info {
-  display: flex;
-  gap: 12px;
-  flex: 1;
+.el-button--danger:hover {
+    background-color: #f78989;
+    border-color: #f78989;
 }
-
-.dish-image {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
-  object-fit: cover;
+.el-button--success { /* Added success button style */
+    background-color: #67C23A;
+    border-color: #67C23A;
 }
-
-.dish-details h4 {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  color: #1f2937;
-  font-weight: 600;
+.el-button--success:hover {
+    background-color: #85ce61;
+    border-color: #85ce61;
 }
-
-.restaurant-name {
-  color: #6b7280;
-  font-size: 14px;
-  margin: 0 0 8px 0;
-}
-
-.rating-display {
-  margin-bottom: 8px;
-}
-
-.review-meta {
-  text-align: right;
-}
-
-.review-date {
-  color: #9ca3af;
-  font-size: 12px;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.review-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.delete-btn {
-  color: #ef4444;
-}
-
-.delete-btn:hover {
-  color: #dc2626;
-}
-
-.review-content {
-  margin-bottom: 16px;
-}
-
-.review-content p {
-  color: #374151;
-  line-height: 1.6;
-  margin: 0 0 12px 0;
-}
-
-.review-images {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.review-image {
-  width: 100px;
-  height: 100px;
-  border-radius: 6px;
-  object-fit: cover;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.review-image:hover {
-  transform: scale(1.05);
-}
-
-.review-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.review-tag {
-  background: #f3f4f6;
-  color: #374151;
-  border: none;
-}
-
-.dish-card {
-  border-radius: 12px;
-  overflow: hidden;
-  height: 100%;
-  margin-bottom: 20px; /* 为每个菜品卡片添加底部边距 */
-}
-
-.dish-cover {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-}
-
-.dish-info-content {
-  padding: 16px;
-}
-
-.dish-info-content h4 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  color: #1f2937;
-  font-weight: 600;
-}
-
-.dish-restaurant {
-  color: #6b7280;
-  font-size: 14px;
-  margin: 0 0 12px 0;
-}
-
-.dish-rating {
-  margin-bottom: 12px;
-}
-
-.review-count {
-  color: #9ca3af;
-  font-size: 12px;
-  margin-left: 8px;
-}
-
-.dish-tags {
-  margin-bottom: 16px;
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.rate-btn {
-  width: 100%;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.review-dialog :deep(.el-dialog__body) {
-  padding: 20px;
-}
-
-.tag-selection {
-  line-height: 2;
-}
-
-.tag-selection .el-checkbox {
-  margin-right: 16px;
-  margin-bottom: 8px;
+.el-tag {
+    font-weight: 500;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .rating-system {
-    padding: 16px;
-    padding-bottom: 80px; /* 移动端增加更多底部空间 */
-  }
-
-  .filter-row .el-col {
-    margin-bottom: 12px;
-  }
-
-  .review-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .review-meta {
-    text-align: left;
-    width: 100%;
-  }
-
-  .dish-info {
-    flex-direction: column;
-  }
-
-  .popular-dishes-card .el-col {
-    margin-bottom: 20px; /* 移动端增加卡片间距 */
-  }
-
-  .popular-dishes-card {
-    margin-bottom: 100px; /* 移动端最后卡片更多底部空间 */
-  }
-}
-
-/* 动画效果 */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.review-item {
-  animation: fadeInUp 0.5s ease-out;
-}
-
-.dish-card {
-  transition: all 0.3s ease;
-}
-
-.dish-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-/* 平滑滚动和页面底部空间确保 */
-.rating-system::after {
-  content: '';
-  display: block;
-  height: 40px; /* 确保页面底部有额外空间 */
-}
-
-/* 优化滚动体验 */
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
-}
-
-/* 确保所有内容都能完整显示 */
-.popular-dishes-card .el-row {
-  margin-bottom: 20px;
-}
-
-.popular-dishes-card .el-row .el-col:last-child .dish-card {
-  margin-bottom: 40px; /* 最后一行菜品卡片的额外底部空间 */
+    .filter-group {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+    .filter-item {
+        width: 100%;
+    }
+    .compact-input {
+        width: 100%;
+    }
+    .el-table {
+        font-size: 12px;
+    }
+    .el-table-column {
+        min-width: 80px;
+    }
+    /* 在小屏幕上隐藏评论列，优化显示 */
+    .el-table-column[prop="comment"] {
+        display: none;
+    }
 }
 </style>

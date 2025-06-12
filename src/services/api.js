@@ -308,6 +308,10 @@ export const getAllReviews = () => {
     return api.get('/reviews');
 };
 
+export const getReviewsByCurrentUser = () => {
+    return api.get('/reviews/current-user');
+}
+
 export const getReviewById = (id) => {
     return api.get(`/reviews/${id}`);
 };
