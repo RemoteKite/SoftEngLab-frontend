@@ -66,6 +66,20 @@
                             />
                         </el-select>
                     </div>
+                    <!-- 新增手动刷新按钮 -->
+                    <div class="filter-item">
+                      <label>&nbsp;</label> <!-- 占位，保持对齐 -->
+                      <el-button
+                          type="primary"
+                          @click="handleManualRefresh"
+                          :disabled="!filters.canteenId || !filters.reservationDate || !filters.reservationTime"
+                          :loading="loading"
+                          class="compact-input"
+                      >
+                        <el-icon><Search /></el-icon>
+                        {{ loading ? '加载中...' : '查询菜品' }}
+                      </el-button>
+                    </div>
                 </div>
             </el-card>
         </div>
@@ -581,6 +595,14 @@ const resetFilters = () => {
     // 餐厅ID、预定日期和时间不在此处重置，因为它们是“选择”而不是“筛选”
     ElMessage.success('筛选条件已重置');
 };
+// 手动刷新方法
+const handleManualRefresh = () => {
+  if (!filters.canteenId || !filters.reservationDate || !filters.reservationTime) {
+    ElMessage.warning('请先选择餐厅、预定日期和时间');
+    return;
+  }
+  fetchMenuDishes();
+};
 
 const handlePageChange = (page) => {
     currentPage.value = page;
@@ -689,19 +711,6 @@ const proceedToCheckout = async () => {
     }
 };
 
-// Watchers to trigger data fetch when canteenId, reservationDate, or reservationTime changes
-watch([() => filters.canteenId, () => filters.reservationDate, () => filters.reservationTime], ([newCanteenId, newReservationDate, newReservationTime]) => {
-    if (newCanteenId && newReservationDate && newReservationTime) {
-        fetchMenuDishes(); // Only fetch if all three are selected
-    } else {
-        // If any is cleared, clear the displayed dishes, cart, and filter options
-        dailyMenuDishes.value = [];
-        cartItems.splice(0);
-        currentPage.value = 1;
-        allDietaryTags.value = [];
-        allAllergens.value = [];
-    }
-}, { immediate: true }); // immediate: true ensures it runs on initial component mount
 
 // Watchers to reset pagination when dietary tags or allergens filters change
 watch([() => filters.selectedDietaryTags, () => filters.selectedAllergens], () => {
@@ -788,6 +797,58 @@ onMounted(() => {
 
 .compact-input {
     width: 150px;
+}
+
+/* 确保查询按钮与其他输入框保持一致的样式 */
+.filter-group .filter-item .el-button.compact-input {
+  width: 100%; /* 与其他输入框保持相同宽度 */
+  height: 32px; /* 与 compact-input 保持相同高度 */
+  font-size: 14px; /* 保持字体大小一致 */
+  border-radius: 4px; /* 与其他输入框圆角一致 */
+}
+
+/* 如果需要调整按钮内图标和文字的间距 */
+.filter-group .filter-item .el-button.compact-input .el-icon {
+  margin-right: 4px;
+}
+
+/* 确保按钮在禁用状态下的样式也保持一致 */
+.filter-group .filter-item .el-button.compact-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 如果你的 compact-input 类有特定样式，确保它们也应用到按钮上 */
+.compact-input {
+  height: 32px !important;
+  line-height: 32px;
+  font-size: 14px;
+}
+
+/* 针对 Element Plus 按钮的特殊调整 */
+.el-button.compact-input {
+  padding: 0 12px; /* 调整内边距与输入框一致 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 如果需要调整加载状态的样式 */
+.el-button.compact-input.is-loading {
+  pointer-events: none;
+}
+
+/* 统一所有filter-item的高度 */
+.filter-group .filter-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.filter-group .filter-item label {
+  margin-bottom: 4px;
+  font-weight: 500;
+  color: #606266;
 }
 
 .menu-section {
