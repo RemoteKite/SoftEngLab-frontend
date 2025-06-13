@@ -38,55 +38,64 @@
                     <span>我的订单</span>
                 </div>
             </template>
-            <!-- 数据绑定到 filteredOrdersDisplay 计算属性 -->
-            <el-table :data="filteredOrdersDisplay" v-loading="loading" style="width: 100%" class="order-table" empty-text="暂无订单数据">
-                <el-table-column prop="orderId" label="订单ID" width="120" sortable></el-table-column>
-                <el-table-column prop="username" label="用户名" width="120" v-if="userRole !== 'DINER'"></el-table-column>
-                <el-table-column prop="canteenName" label="食堂" width="120"></el-table-column>
-                <el-table-column prop="orderDate" label="预定日期" width="120" sortable></el-table-column>
-                <el-table-column prop="pickupTime" label="取餐时间" width="100"></el-table-column>
-                <el-table-column prop="totalAmount" label="总金额" width="100">
-                    <template #default="{ row }">
-                        ¥{{ row.totalAmount ? row.totalAmount.toFixed(2) : '0.00' }}
-                    </template>
-                </el-table-column>
-                <el-table-column prop="status" label="状态" width="120">
-                    <template #default="{ row }">
-                        <el-tag :type="getStatusTagType(row.status)">
-                            {{ getOrderStatusText(row.status) }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="createdAt" label="创建时间" width="180" sortable>
-                    <template #default="{ row }">
-                        {{ formatDateTime(row.createdAt) }}
-                    </template>
-                </el-table-column>
-                <el-table-column label="操作" min-width="200" fixed="right">
-                    <template #default="{ row }">
-                        <el-button size="small" @click="viewOrderDetails(row)">查看详情</el-button>
-                        <el-button
-                                v-if="canUpdateStatus(row.status)"
-                                size="small"
-                                type="warning"
-                                @click="showUpdateStatusDialog(row)"
-                        >
-                            更新状态
-                        </el-button>
-                        <el-button
-                                v-if="canCancelOrder(row.status)"
-                                size="small"
-                                type="danger"
-                                @click="confirmCancelOrder(row)"
-                        >
-                            取消订单
-                        </el-button>
-                    </template>
-                </el-table-column>
-            </el-table>
-        </el-card>
+            <!-- 数据绑定到 paginatedAndFilteredOrders 计算属性 -->
+            <el-table :data="paginatedAndFilteredOrders" v-loading="loading" style="width: 100%" class="order-table" empty-text="暂无订单数据">
+                <!-- <el-table-column prop="orderId" label="订单ID" width="120" sortable></el-table-column>-->
+                 <el-table-column prop="username" label="用户名" width="120" v-if="userRole !== 'DINER'"></el-table-column>
+                 <el-table-column prop="canteenName" label="食堂" width="120"></el-table-column>
+                 <el-table-column prop="orderDate" label="预定日期" width="120" sortable></el-table-column>
+                 <el-table-column prop="pickupTime" label="取餐时间" width="100"></el-table-column>
+                 <el-table-column prop="totalAmount" label="总金额" width="100">
+                     <template #default="{ row }">
+                         ¥{{ row.totalAmount ? row.totalAmount.toFixed(2) : '0.00' }}
+                     </template>
+                 </el-table-column>
+                 <el-table-column prop="status" label="状态" width="120">
+                     <template #default="{ row }">
+                         <el-tag :type="getStatusTagType(row.status)">
+                             {{ getOrderStatusText(row.status) }}
+                         </el-tag>
+                     </template>
+                 </el-table-column>
+                 <el-table-column prop="createdAt" label="创建时间" width="180" sortable>
+                     <template #default="{ row }">
+                         {{ formatDateTime(row.createdAt) }}
+                     </template>
+                 </el-table-column>
+                 <el-table-column label="操作" min-width="200" fixed="right">
+                     <template #default="{ row }">
+                         <el-button size="small" @click="viewOrderDetails(row)">查看详情</el-button>
+                         <el-button
+                                 v-if="canUpdateStatus(row.status)"
+                                 size="small"
+                                 type="warning"
+                                 @click="showUpdateStatusDialog(row)"
+                         >
+                             更新状态
+                         </el-button>
+                         <el-button
+                                 v-if="canCancelOrder(row.status)"
+                                 size="small"
+                                 type="danger"
+                                 @click="confirmCancelOrder(row)"
+                         >
+                             取消订单
+                         </el-button>
+                     </template>
+                 </el-table-column>
+             </el-table>
+             <div class="pagination-wrapper">
+                 <el-pagination
+                         v-model:current-page="currentPage"
+                         :page-size="pageSize"
+                         :total="totalOrders"
+                         layout="total, prev, pager, next, jumper"
+                         @current-change="handlePageChange"
+                 />
+             </div>
+         </el-card>
 
-        <!-- 订单详情弹框 -->
+         <!-- 订单详情弹框 -->
         <el-dialog
                 v-model="showOrderDetailModal"
                 :title="selectedOrderDetails ? '订单详情: ' + selectedOrderDetails.orderId : '订单详情'"
@@ -166,12 +175,12 @@
 </template>
 
 <script setup>
-import { reactive, computed, onMounted, ref, watch } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { Refresh } from '@element-plus/icons-vue';
+import {computed, onMounted, ref, watch} from 'vue';
+import {ElMessage, ElMessageBox} from 'element-plus';
+import {Refresh} from '@element-plus/icons-vue';
 
 // 导入真实的 API 服务
-import { getAllOrders, getOrdersByUserId, updateOrderStatus, cancelOrder, getOrdersByCurrentUser } from '@/services/api.js';
+import {cancelOrder, getAllOrders, getOrdersByCurrentUser, updateOrderStatus} from '@/services/api.js';
 
 /**
  * 从 JWT Token 中获取用户角色和ID。
@@ -213,9 +222,13 @@ const userRole = ref(null); // 用户的角色，初始化为null，将从JWT中
 const currentUserId = ref(null); // 当前用户的ID，初始化为null，将从JWT中获取
 
 const loading = ref(false);
-const rawOrders = ref([]); // 新增：用于存储从后端获取的所有订单数据（ADMIN/STAFF）
-const orders = ref([]); // 实际绑定到表格的数据（DINER或经过前端筛选后的结果）
-const statusFilter = ref(''); // 用于 ADMIN/STAFF 筛选订单状态
+const allOrders = ref([]); // 存储从后端获取的所有原始订单数据
+const statusFilter = ref(''); // 用于筛选订单状态
+
+// 分页状态
+const currentPage = ref(1);
+const pageSize = ref(5); // 调整为每页显示5条，与示例一致
+const totalOrders = ref(0); // 用于分页组件显示的总条数
 
 // 订单详情弹框相关
 const showOrderDetailModal = ref(false);
@@ -282,14 +295,11 @@ const canUpdateStatus = (status) => {
 
 // 权限判断：是否可以取消订单
 const canCancelOrder = (status) => {
-    // ADMIN/STAFF 可以在非COMPLETED/CANCELLED状态下取消
-    const adminOrStaffCanCancel = (userRole.value === 'ADMIN' || userRole.value === 'STAFF') && status !== 'COMPLETED' && status !== 'CANCELLED';
-    // DINER 可以在PENDING/CONFIRMED状态下取消
-    const dinerCanCancel = (userRole.value === 'DINER' && (status === 'PENDING' || status === 'CONFIRMED'));
-    return adminOrStaffCanCancel || dinerCanCancel;
+    // DINER 可以在PENDING/CONFIRMED状态下取消 ADMIN/STAFF 应该使用UpdateStatus功能
+    return (userRole.value === 'DINER' && (status === 'PENDING' || status === 'CONFIRMED'));
 };
 
-// 获取订单列表
+// 获取所有订单列表 (不带分页参数，全量获取)
 const fetchOrders = async () => {
     // 只有当角色已确定时才发起请求
     if (userRole.value === null) {
@@ -298,23 +308,19 @@ const fetchOrders = async () => {
     }
 
     loading.value = true;
-    rawOrders.value = []; // 每次获取前清空原始订单数据
-    orders.value = []; // 清空用于 DINER 角色，filteredOrdersDisplay 会重新计算
+    allOrders.value = []; // 每次获取前清空原始订单数据
 
     try {
         let response;
         if (userRole.value === 'DINER') {
             // 对于普通用户，使用新的API，后端从JWT中获取用户ID
-            // 如果 getOrdersByCurrentUser 依赖于 currentUserId，需要确保它在调用时已存在。
-            // 否则，后端应能根据JWT token自动识别用户ID。
             response = await getOrdersByCurrentUser();
-            orders.value = response.data; // DINER 直接将数据赋值给 orders
         } else {
-            // ADMIN 或 STAFF 获取所有订单，前端进行筛选
-            // 这里不再传递 statusFilter，因为我们将在前端进行筛选
+            // ADMIN 或 STAFF 获取所有订单
             response = await getAllOrders(); // 调用 getAllOrders() 不带参数
-            rawOrders.value = response.data; // ADMIN/STAFF 将所有订单存储到 rawOrders
         }
+        // 假设后端返回的是一个列表
+        allOrders.value = response.data;
         ElMessage.success('订单加载成功！');
     } catch (error) {
         ElMessage.error(`加载订单失败: ${error.message || '未知错误'}`); // 改进错误信息获取
@@ -324,21 +330,30 @@ const fetchOrders = async () => {
     }
 };
 
-// 新增 computed 属性：用于在前端根据状态筛选订单并显示
-const filteredOrdersDisplay = computed(() => {
-    // 普通用户直接显示 orders.value (因为 getOrdersByCurrentUser 已经返回其自己的订单)
-    if (userRole.value === 'DINER') {
-        return orders.value;
+// 计算属性：纯前端分页和筛选逻辑
+const paginatedAndFilteredOrders = computed(() => {
+    let filteredData = allOrders.value;
+
+    // 1. 应用状态筛选
+    if (statusFilter.value) {
+        filteredData = filteredData.filter(order => order.status === statusFilter.value);
     }
-    // 管理员或员工根据 statusFilter 筛选 rawOrders
-    else {
-        if (!statusFilter.value) {
-            return rawOrders.value; // 如果没有筛选条件（statusFilter为空字符串），显示所有原始订单
-        } else {
-            return rawOrders.value.filter(order => order.status === statusFilter.value);
-        }
-    }
+
+    // 更新总条数（筛选后的）
+    totalOrders.value = filteredData.length;
+
+    // 2. 应用前端分页
+    const start = (currentPage.value - 1) * pageSize.value;
+    const end = start + pageSize.value;
+    return filteredData.slice(start, end);
 });
+
+
+// 处理当前页码变化
+const handlePageChange = (val) => {
+    currentPage.value = val;
+    // paginatedAndFilteredOrders 会自动重新计算
+};
 
 
 // 查看订单详情
@@ -408,11 +423,11 @@ const confirmCancelOrder = async (order) => {
     }
 };
 
-// 监听 userRole 的变化，以触发订单数据的首次获取或重新获取
-// statusFilter 的变化将通过 computed 属性自动反映，不再触发 fetchOrders
-watch(userRole, () => {
+// 监听 userRole 和 statusFilter 的变化，当它们改变时，重置页码并重新获取所有数据
+watch([userRole, statusFilter], () => {
     if (userRole.value) { // 确保 userRole 已经确定
         fetchOrders();
+        currentPage.value = 1; // 重置到第一页
     }
 }, { immediate: true }); // 组件加载时立即执行一次，确保初始数据加载
 
@@ -569,5 +584,11 @@ onMounted(() => {
     .el-table-column {
         min-width: 80px; /* Ensure columns are not too narrow */
     }
+}
+
+.pagination-wrapper {
+    display: flex;
+    justify-content: center; /* 将分页组件居中 */
+    margin-top: 24px;
 }
 </style>

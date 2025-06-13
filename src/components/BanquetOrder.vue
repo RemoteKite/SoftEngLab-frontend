@@ -11,7 +11,7 @@
                 </div>
             </template>
 
-            <div class="form-scroll-content"> <!-- Added wrapper for scrollbar -->
+            <div class="form-scroll-content">
                 <el-form :model="reservationForm" :rules="reservationRules" ref="reservationFormRef" label-width="100px">
                     <el-row :gutter="20">
                         <el-col :span="12">
@@ -38,7 +38,7 @@
                                     <el-option
                                             v-for="room in roomList"
                                             :key="room.roomId"
-                                            :label="room.name + ' (容量: ' + room.capacity + '人)'"
+                                            :label="room.name + ' (容量: ' + room.capacity + '人, 基础费用: ¥' + room.baseFee + ')'"
                                             :value="room.roomId"
                                     ></el-option>
                                 </el-select>
@@ -109,18 +109,18 @@
                                 <h4>已选菜品:</h4>
                                 <div class="selected-tags-wrapper">
                                     <el-tag
-                                            v-for="dish in reservationForm.selectedDishesForDisplay"
+                                            v-for="dish in selectedDishesForDisplay"
                                             :key="dish.dishId"
                                             closable
                                             @close="removeDish(dish)"
                                             size="small"
                                             class="mr-1 mb-1"
                                     >
-                                        {{ dish.name }}
+                                        {{ dish.name }} x{{ dish.quantity }} <!-- 显示数量 -->
                                     </el-tag>
-                                    <span v-if="reservationForm.selectedDishesForDisplay.length === 0" class="no-selection-text">未选择菜品</span>
+                                    <span v-if="selectedDishesForDisplay.length === 0" class="no-selection-text">未选择菜品</span>
                                 </div>
-                                <el-tooltip :disabled="!!reservationForm.canteenId" content="请先选择餐厅" placement="top">
+                                <el-tooltip :disabled="!reservationForm.canteenId" content="请先选择餐厅" placement="top">
                                     <el-button @click="openDishSelector" :disabled="!reservationForm.canteenId">
                                         <el-icon><Plus /></el-icon> 选择菜品
                                     </el-button>
@@ -145,7 +145,7 @@
                                     </el-tag>
                                     <span v-if="reservationForm.selectedPackagesForDisplay.length === 0" class="no-selection-text">未选择套餐</span>
                                 </div>
-                                <el-tooltip :disabled="!!reservationForm.canteenId" content="请先选择餐厅" placement="top">
+                                <el-tooltip :disabled="!reservationForm.canteenId" content="请先选择餐厅" placement="top">
                                     <el-button @click="openPackageSelector" :disabled="!reservationForm.canteenId">
                                         <el-icon><Plus /></el-icon> 选择套餐
                                     </el-button>
@@ -165,6 +165,24 @@
                     <el-form-item label="生日蛋糕">
                         <el-checkbox v-model="reservationForm.hasBirthdayCake">需要生日蛋糕</el-checkbox>
                     </el-form-item>
+
+                    <!-- 新增：包厢基础费用显示 -->
+                    <el-row :gutter="20">
+                        <el-col :span="24">
+                            <el-form-item label="包厢基础费用">
+                                <span class="base-fee-display">{{ selectedRoomBaseFeeDisplay }}</span>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+
+                    <!-- 新增：预估总价显示 -->
+                    <el-row :gutter="20">
+                        <el-col :span="24">
+                            <el-form-item label="预估总价">
+                                <span class="total-price-display">¥ {{ calculatedTotalPrice }}</span>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
 
                     <el-form-item>
                         <el-button type="primary" @click="submitReservation" :loading="submitting">
@@ -209,6 +227,17 @@
             </div>
             <template #footer>
                 <el-button @click="showDishSelectorDialog = false">完成选择</el-button>
+            </template>
+        </el-dialog>
+
+        <!-- 菜品数量选择弹框 -->
+        <el-dialog v-model="showQuantityDialog" :title="`选择 '${quantityDialogDishName}' 的数量`" width="300px" custom-class="quantity-dialog">
+            <el-form-item label="数量">
+                <el-input-number v-model="currentDishQuantity" :min="0" :step="1"></el-input-number>
+            </el-form-item>
+            <template #footer>
+                <el-button @click="showQuantityDialog = false">取消</el-button>
+                <el-button type="primary" @click="handleQuantityConfirm">确定</el-button>
             </template>
         </el-dialog>
 
@@ -273,22 +302,28 @@ import {
 import {
     createBanquet,
     getAllCanteens,
-    getRoomsByCanteenId, // 假设存在此API
-    getAllDishes,        // 假设存在此API
-    getAllPackages       // 假设存在此API
+    getRoomsByCanteenId,
+    getAllDishes,
+    getAllPackages
 } from '@/services/api.js';
 
 // Reactive data
-const submitting = ref(false); // Form submission loading state
-const roomsLoading = ref(false); // Rooms fetch loading state
-const dishesLoading = ref(false); // Dishes fetch loading state
-const packagesLoading = ref(false); // Packages fetch loading state
+const submitting = ref(false); // 表单提交加载状态
+const roomsLoading = ref(false); // 包厢列表加载状态
+const dishesLoading = ref(false); // 菜品列表加载状态
+const packagesLoading = ref(false); // 套餐列表加载状态
 
-const showDishSelectorDialog = ref(false);
-const showPackageSelectorDialog = ref(false);
+const showDishSelectorDialog = ref(false); // 菜品选择弹框的显示状态
+const showPackageSelectorDialog = ref(false); // 套餐选择弹框的显示状态
+const showQuantityDialog = ref(false); // 菜品数量选择弹框的显示状态
 
-const dishSearchKeyword = ref('');
-const packageSearchKeyword = ref('');
+const dishSearchKeyword = ref(''); // 菜品搜索关键词
+const packageSearchKeyword = ref(''); // 套餐搜索关键词
+
+// 菜品数量选择弹框相关状态
+const currentSelectedDishForQuantity = ref({}); // 当前正在设置数量的菜品（完整对象）
+const currentDishQuantity = ref(1); // 当前菜品数量
+const quantityDialogDishName = ref(''); // 数量弹框中显示的菜品名称
 
 // Form data
 const reservationFormRef = ref(null);
@@ -301,21 +336,20 @@ const reservationForm = reactive({
     contactName: '',
     contactPhoneNumber: '',
     purpose: '',
-    selectedDishIds: [],
+    selectedDishItems: [], // 修改：现在存储 { dishId, quantity } 对象的数组
     selectedPackageIds: [],
     hasBirthdayCake: false,
     customMenuRequest: '',
     specialRequests: '',
-    // For display in UI, not sent to API directly
-    selectedDishesForDisplay: [],
-    selectedPackagesForDisplay: [],
+    selectedPackagesForDisplay: [], // 保持不变，因为套餐没有数量
+    totalPrice: 0, // 新增：用于存储计算后的总价，最终会发送给后端
 });
 
 // Data lists for selectors
 const canteenList = ref([]);
-const roomList = ref([]); // Rooms for selected canteen
-const allAvailableDishes = ref([]); // All dishes for selection
-const allAvailablePackages = ref([]); // All packages for selection
+const roomList = ref([]); // 所选餐厅的包厢列表
+const allAvailableDishes = ref([]); // 所有可用菜品
+const allAvailablePackages = ref([]); // 所有可用套餐
 
 // Form validation rules
 const reservationRules = reactive({
@@ -336,6 +370,52 @@ const reservationRules = reactive({
     customMenuRequest: [{ max: 1000, message: '定制菜单请求不能超过1000个字符', trigger: 'blur' }],
     specialRequests: [{ max: 500, message: '特殊要求不能超过500个字符', trigger: 'blur' }],
 });
+
+// 计算属性：用于在UI中显示已选菜品，包含数量和菜品详细信息
+const selectedDishesForDisplay = computed(() => {
+    return reservationForm.selectedDishItems.map(selectedItem => {
+        const dish = allAvailableDishes.value.find(d => d.dishId === selectedItem.dishId);
+        // 如果找到菜品，则返回包含菜品详细信息和数量的对象，否则返回null（会被过滤掉）
+        return dish ? { ...dish, quantity: selectedItem.quantity } : null;
+    }).filter(Boolean); // 过滤掉任何 null 值
+});
+
+// 计算属性：实时计算宴会总价
+const calculatedTotalPrice = computed(() => {
+    let price = 0;
+
+    // 1. 添加包厢基础费用
+    const selectedRoom = roomList.value.find(room => room.roomId === reservationForm.roomId);
+    if (selectedRoom && selectedRoom.baseFee) {
+        price += selectedRoom.baseFee;
+    }
+
+    // 2. 添加定制菜品项的价格 (数量 * 单价)
+    reservationForm.selectedDishItems.forEach(item => {
+        const dish = allAvailableDishes.value.find(d => d.dishId === item.dishId);
+        if (dish && dish.price) {
+            price += dish.price * item.quantity;
+        }
+    });
+
+    // 3. 添加已选套餐的价格
+    reservationForm.selectedPackageIds.forEach(packageId => {
+        const pkg = allAvailablePackages.value.find(p => p.packageId === packageId);
+        if (pkg && pkg.price) {
+            price += pkg.price;
+        }
+    });
+
+    // 确保价格保留两位小数
+    return parseFloat(price.toFixed(2));
+});
+
+// 计算属性：显示已选包厢的基础费用
+const selectedRoomBaseFeeDisplay = computed(() => {
+    const selectedRoom = roomList.value.find(room => room.roomId === reservationForm.roomId);
+    return selectedRoom ? `¥ ${selectedRoom.baseFee.toFixed(2)}` : '未选择包厢';
+});
+
 
 // Helper function: Extract error message
 const getErrorMessage = (error) => {
@@ -368,7 +448,7 @@ const fetchCanteens = async () => {
 
 const fetchRoomsByCanteen = async (canteenId) => {
     roomList.value = [];
-    reservationForm.roomId = ''; // Clear selected room
+    reservationForm.roomId = ''; // 清除已选包厢
     if (!canteenId) return;
 
     roomsLoading.value = true;
@@ -416,7 +496,7 @@ const openDishSelector = () => {
         return;
     }
     showDishSelectorDialog.value = true;
-    dishSearchKeyword.value = ''; // Reset search
+    dishSearchKeyword.value = ''; // 重置搜索关键词
 };
 
 const getFilteredDishes = computed(() => {
@@ -433,26 +513,55 @@ const getFilteredDishes = computed(() => {
 });
 
 const isDishSelected = (dish) => {
-    return reservationForm.selectedDishIds.includes(dish.dishId);
+    // 检查菜品是否已在 selectedDishItems 中
+    return reservationForm.selectedDishItems.some(item => item.dishId === dish.dishId);
 };
 
 const toggleDishSelection = (dish) => {
-    const idIndex = reservationForm.selectedDishIds.indexOf(dish.dishId);
-    const displayIndex = reservationForm.selectedDishesForDisplay.findIndex(d => d.dishId === dish.dishId);
+    const existingItem = reservationForm.selectedDishItems.find(item => item.dishId === dish.dishId);
 
-    if (idIndex > -1) {
-        // Remove dish
-        reservationForm.selectedDishIds.splice(idIndex, 1);
-        if (displayIndex > -1) reservationForm.selectedDishesForDisplay.splice(displayIndex, 1);
+    currentSelectedDishForQuantity.value = dish; // 存储完整的菜品对象
+    quantityDialogDishName.value = dish.name;
+
+    if (existingItem) {
+        // 菜品已选，预填充现有数量
+        currentDishQuantity.value = existingItem.quantity;
     } else {
-        // Add dish
-        reservationForm.selectedDishIds.push(dish.dishId);
-        reservationForm.selectedDishesForDisplay.push({ ...dish });
+        // 菜品未选，默认数量为1
+        currentDishQuantity.value = 1;
     }
+    showQuantityDialog.value = true; // 打开数量选择弹框
 };
 
-const removeDish = (dish) => {
-    toggleDishSelection(dish); // Reuse toggle logic for removal
+const handleQuantityConfirm = () => {
+    const dish = currentSelectedDishForQuantity.value;
+    const quantity = currentDishQuantity.value;
+
+    if (quantity <= 0) {
+        // 如果数量为0或更少，则移除该菜品项
+        removeDish(dish);
+        showQuantityDialog.value = false;
+        return;
+    }
+
+    const existingItemIndex = reservationForm.selectedDishItems.findIndex(item => item.dishId === dish.dishId);
+
+    if (existingItemIndex > -1) {
+        // 更新现有菜品项的数量
+        reservationForm.selectedDishItems[existingItemIndex].quantity = quantity;
+    } else {
+        // 添加新的菜品项
+        reservationForm.selectedDishItems.push({ dishId: dish.dishId, quantity: quantity });
+    }
+    showQuantityDialog.value = false; // 关闭数量选择弹框
+};
+
+const removeDish = (dishToRemove) => {
+    const itemIndex = reservationForm.selectedDishItems.findIndex(item => item.dishId === dishToRemove.dishId);
+    if (itemIndex > -1) {
+        reservationForm.selectedDishItems.splice(itemIndex, 1);
+    }
+    // selectedDishesForDisplay 是计算属性，无需手动修改
 };
 
 // --- Package Selector Methods ---
@@ -509,7 +618,7 @@ const submitReservation = async () => {
         await reservationFormRef.value.validate(); // Validate all form fields
         submitting.value = true;
 
-        // Construct payload for API
+        // 构建 API 请求的 payload
         const payload = {
             canteenId: reservationForm.canteenId,
             roomId: reservationForm.roomId,
@@ -519,17 +628,18 @@ const submitReservation = async () => {
             contactName: reservationForm.contactName,
             contactPhoneNumber: reservationForm.contactPhoneNumber,
             purpose: reservationForm.purpose,
-            selectedDishIds: reservationForm.selectedDishIds,
+            selectedDishItems: reservationForm.selectedDishItems, // 直接使用已包含数量的数组
             selectedPackageIds: reservationForm.selectedPackageIds,
             hasBirthdayCake: reservationForm.hasBirthdayCake,
             customMenuRequest: reservationForm.customMenuRequest,
             specialRequests: reservationForm.specialRequests,
+            totalPrice: calculatedTotalPrice.value, // 新增：将计算后的总价发送给后端
         };
 
-        // Call the API
+        // 调用 API
         await createBanquet(payload);
         ElMessage.success('宴会预定成功！');
-        resetForm(); // Reset form after successful submission
+        resetForm(); // 成功提交后重置表单
     } catch (error) {
         ElMessage.error(getErrorMessage(error));
         console.error('宴会预定失败:', error);
@@ -540,7 +650,7 @@ const submitReservation = async () => {
 
 const resetForm = () => {
     reservationFormRef.value?.resetFields();
-    // Manually clear fields not covered by resetFields or needing specific clearing
+    // 手动清除未被 resetFields 覆盖或需要特定清除的字段
     Object.assign(reservationForm, {
         canteenId: '',
         roomId: '',
@@ -550,24 +660,23 @@ const resetForm = () => {
         contactName: '',
         contactPhoneNumber: '',
         purpose: '',
-        selectedDishIds: [],
+        selectedDishItems: [], // 清除菜品项
         selectedPackageIds: [],
         hasBirthdayCake: false,
         customMenuRequest: '',
         specialRequests: '',
-        selectedDishesForDisplay: [],
         selectedPackagesForDisplay: [],
+        totalPrice: 0, // 重置总价
     });
-    roomList.value = []; // Clear rooms when canteen is reset
+    roomList.value = []; // 重置餐厅时清除包厢列表
 };
 
 // --- Watchers ---
-// Watch for canteen selection to fetch rooms
+// 监听餐厅选择变化以获取包厢
 watch(() => reservationForm.canteenId, (newCanteenId) => {
     fetchRoomsByCanteen(newCanteenId);
-    // When canteen changes, clear selected dishes/packages as they might not be valid for new canteen
-    reservationForm.selectedDishIds = [];
-    reservationForm.selectedDishesForDisplay = [];
+    // 餐厅改变时，清除已选菜品和套餐，因为它们可能不再适用于新餐厅
+    reservationForm.selectedDishItems = []; // 清除菜品项
     reservationForm.selectedPackageIds = [];
     reservationForm.selectedPackagesForDisplay = [];
 });
@@ -577,7 +686,7 @@ onMounted(async () => {
     await fetchCanteens();
     await fetchAllDishes();
     await fetchAllPackages();
-    // Set default date to today
+    // 设置默认日期为今天
     reservationForm.eventDate = new Date().toISOString().slice(0, 10);
 });
 </script>
@@ -825,5 +934,17 @@ onMounted(async () => {
     .form-scroll-content {
         max-height: calc(100vh - 200px); /* Adjust for smaller screens */
     }
+}
+
+.total-price-display {
+    font-size: 18px;
+    font-weight: bold;
+    color: #f59e0b; /* Orange color for price */
+}
+
+.base-fee-display {
+    font-size: 16px;
+    font-weight: bold;
+    color: #34d399; /* Green color for base fee */
 }
 </style>

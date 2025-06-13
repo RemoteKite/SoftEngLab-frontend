@@ -95,10 +95,6 @@ export const createDish = (formData) => {
     });
 };
 
-export const getDishesByCanteenId = (id) => {
-    return api.get(`/dishes/canteen/${id}`);
-}
-
 export const updateDish = (id, formData) => {
     return api.put(`/dishes/${id}`, formData, {
         headers: {
@@ -380,25 +376,6 @@ export const getAllBanquets = () => {
     return api.get('/banquet');
 };
 
-export const updateBanquet = (id, params) => {
-    return api.put(`/banquet/${id}`, params, {
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    });
-};
-
-export const deleteBanquet = (id) => {
-    return api.delete(`/banquet/${id}`);
-};
-
-export const getBanquetsByCanteenId = (canteenId) => {
-    return api.get(`/banquet/canteen/${canteenId}`);
-};
-
-export const getBanquetsByCanteenIdByUserId = (userId) => {
-    return api.get(`/banquet/canteen/user/${userId}`);
-};
 
 export const getBanquetsByCurrentUser = () => {
     return api.get('/banquet/current-user');

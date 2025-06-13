@@ -38,14 +38,20 @@
                     <span>我的预约</span>
                 </div>
             </template>
-            <el-table :data="filteredReservationsDisplay" v-loading="loading" style="width: 100%" class="reservation-table" empty-text="暂无预约数据">
-                <el-table-column prop="banquetId" label="预约ID" width="120" sortable></el-table-column>
+            <!-- 表格数据源改为 paginatedAndFilteredReservations -->
+            <el-table :data="paginatedAndFilteredReservations" v-loading="loading" style="width: 100%" class="reservation-table" empty-text="暂无预约数据">
+                <!--<el-table-column prop="banquetId" label="预约ID" width="120" sortable></el-table-column>-->
                 <el-table-column prop="contactName" label="联系人" width="120"></el-table-column>
                 <el-table-column prop="canteenName" label="餐厅" width="120"></el-table-column>
                 <el-table-column prop="roomName" label="包厢" width="100"></el-table-column>
                 <el-table-column prop="eventDate" label="宴会日期" width="120" sortable></el-table-column>
                 <el-table-column prop="eventTime" label="宴会时间" width="100"></el-table-column>
                 <el-table-column prop="numberOfGuests" label="宾客人数" width="100"></el-table-column>
+                <el-table-column prop="totalPrice" label="总价" width="100">
+                    <template #default="{ row }">
+                        ¥ {{ row.totalPrice ? row.totalPrice.toFixed(2) : '0.00' }}
+                    </template>
+                </el-table-column>
                 <el-table-column prop="status" label="状态" width="120">
                     <template #default="{ row }">
                         <el-tag :type="getStatusTagType(row.status)">
@@ -80,6 +86,15 @@
                     </template>
                 </el-table-column>
             </el-table>
+            <div class="pagination-wrapper">
+                <el-pagination
+                        v-model:current-page="currentPage"
+                        :page-size="pageSize"
+                        :total="totalReservations"
+                        layout="total, prev, pager, next, jumper"
+                        @current-change="handlePageChange"
+                />
+            </div>
         </el-card>
 
         <!-- 预约详情弹框 -->
@@ -108,11 +123,13 @@
                         {{ getReservationStatusText(selectedReservationDetails.status) }}
                     </el-tag>
                 </p>
+                <!-- 显示总价 -->
+                <p><strong>总价:</strong> ¥ {{ selectedReservationDetails.totalPrice ? selectedReservationDetails.totalPrice.toFixed(2) : '0.00' }}</p>
                 <p><strong>创建时间:</strong> {{ formatDateTime(selectedReservationDetails.createdAt) }}</p>
 
-                <h4 class="items-header" v-if="selectedReservationDetails.customDishDtos && selectedReservationDetails.customDishDtos.length > 0">已选菜品:</h4>
-                <div v-if="selectedReservationDetails.customDishDtos && selectedReservationDetails.customDishDtos.length > 0" class="selected-items-tags">
-                    <el-tag v-for="dish in selectedReservationDetails.customDishDtos" :key="dish.dishId" size="small">{{ dish.name }}</el-tag>
+                <h4 class="items-header" v-if="selectedReservationDetails.customDishItems && selectedReservationDetails.customDishItems.length > 0">已选菜品:</h4>
+                <div v-if="selectedReservationDetails.customDishItems && selectedReservationDetails.customDishItems.length > 0" class="selected-items-tags">
+                    <el-tag v-for="dishItem in selectedReservationDetails.customDishItems" :key="dishItem.banquetReservationDishItemId" size="small">{{ dishItem.dishName }} x{{ dishItem.quantity }}</el-tag>
                 </div>
 
                 <h4 class="items-header" v-if="selectedReservationDetails.packageDtos && selectedReservationDetails.packageDtos.length > 0">已选套餐:</h4>
@@ -166,17 +183,12 @@
 </template>
 
 <script setup>
-import { reactive, computed, onMounted, ref, watch } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { Refresh } from '@element-plus/icons-vue';
+import {computed, onMounted, ref, watch} from 'vue';
+import {ElMessage, ElMessageBox} from 'element-plus';
+import {Refresh} from '@element-plus/icons-vue';
 
-// 导入 API 服务 (已根据您提供的最新API名称进行了更新)
-import {
-    getAllBanquets, // 原 getAllBanquetReservations
-    getBanquetsByCurrentUser, // 原 getBanquetReservationsByCurrentUser
-    updateBanquetStatus, // 原 updateBanquetReservationStatus
-    cancelBanquet // 原 cancelBanquetReservation
-} from '@/services/api.js';
+// 导入 API 服务
+import {cancelBanquet, getAllBanquets, getBanquetsByCurrentUser, updateBanquetStatus} from '@/services/api.js';
 
 // 获取并解码 JWT Token 中的信息
 const getDecodedJwtInfo = () => {
@@ -216,9 +228,13 @@ const userRole = ref(null); // 用户的角色，初始化为null，将从JWT中
 const currentUserId = ref(null); // 当前用户的ID，初始化为null，将从JWT中获取
 
 const loading = ref(false);
-const rawBanquetReservations = ref([]); // 存储从后端获取的所有预约数据（ADMIN/STAFF）
-const banquetReservations = ref([]); // 实际绑定到表格的数据（DINER或经过前端筛选后的结果）
-const statusFilter = ref(''); // 用于 ADMIN/STAFF 筛选预约状态
+const allBanquetReservations = ref([]); // 存储从后端获取的所有预约数据
+const statusFilter = ref(''); // 用于筛选预约状态
+
+// 分页状态
+const currentPage = ref(1);
+const pageSize = ref(5); // 调整为每页显示3条
+const totalReservations = ref(0); // 用于分页组件显示的总条数
 
 // 预约详情弹框相关
 const showReservationDetailModal = ref(false);
@@ -262,9 +278,11 @@ const formatDateTime = (dateTimeString) => {
     if (!dateTimeString) return '';
     try {
         const date = new Date(dateTimeString);
+        // 检查日期是否有效，如果无效则尝试解析为本地日期时间字符串
         if (isNaN(date.getTime())) {
             const parts = dateTimeString.split('T');
             const datePart = parts[0];
+            // 确保时间部分长度足够，避免substring报错
             const timePart = parts[1] ? parts[1].substring(0, 8) : '';
             return `${datePart} ${timePart}`;
         }
@@ -283,12 +301,10 @@ const canUpdateStatus = (status) => {
 
 // 权限判断：是否可以取消预约
 const canCancelReservation = (status) => {
-    const adminOrStaffCanCancel = (userRole.value === 'ADMIN' || userRole.value === 'STAFF') && status !== 'COMPLETED' && status !== 'CANCELLED';
-    const dinerCanCancel = (userRole.value === 'DINER' && (status === 'PENDING' || status === 'CONFIRMED'));
-    return adminOrStaffCanCancel || dinerCanCancel;
+    return (userRole.value === 'DINER' && (status === 'PENDING' || status === 'CONFIRMED'));
 };
 
-// 获取预约列表
+// 获取所有预约列表 (不带分页参数，全量获取)
 const fetchBanquetReservations = async () => {
     if (userRole.value === null) {
         console.log('用户角色未确定，暂不加载预约。');
@@ -296,20 +312,17 @@ const fetchBanquetReservations = async () => {
     }
 
     loading.value = true;
-    rawBanquetReservations.value = [];
-    banquetReservations.value = [];
+    allBanquetReservations.value = []; // 清空所有数据
 
     try {
         let response;
         if (userRole.value === 'DINER') {
-            // 普通用户通过此API获取自己的宴会预约
-            response = await getBanquetsByCurrentUser();
-            banquetReservations.value = response.data;
+            response = await getBanquetsByCurrentUser(); // 不传分页参数
         } else {
-            // ADMIN 或 STAFF 获取所有宴会预约，前端进行筛选
-            response = await getAllBanquets(); // 调用新的API名称，不带参数
-            rawBanquetReservations.value = response.data;
+            response = await getAllBanquets(); // 不传分页参数
         }
+        // 假设后端返回的是一个列表，而不是带 content 和 totalElements 的对象
+        allBanquetReservations.value = response.data;
         ElMessage.success('预约加载成功！');
     } catch (error) {
         ElMessage.error(`加载预约失败: ${error.message || '未知错误'}`);
@@ -319,18 +332,38 @@ const fetchBanquetReservations = async () => {
     }
 };
 
-// computed 属性：用于在前端根据状态筛选预约并显示
-const filteredReservationsDisplay = computed(() => {
-    if (userRole.value === 'DINER') {
-        return banquetReservations.value;
-    } else {
-        if (!statusFilter.value) {
-            return rawBanquetReservations.value;
-        } else {
-            return rawBanquetReservations.value.filter(reservation => reservation.status === statusFilter.value);
-        }
+// 计算属性：纯前端分页和筛选逻辑
+const paginatedAndFilteredReservations = computed(() => {
+    let filteredData = allBanquetReservations.value;
+
+    // 1. 应用状态筛选
+    if (statusFilter.value) {
+        filteredData = filteredData.filter(reservation => reservation.status === statusFilter.value);
     }
+
+    // 更新总条数（筛选后的）
+    totalReservations.value = filteredData.length;
+
+    // 2. 应用前端分页
+    const start = (currentPage.value - 1) * pageSize.value;
+    const end = start + pageSize.value;
+    return filteredData.slice(start, end);
 });
+
+
+// 处理每页显示数量变化 (如果未来需要 el-pagination 的 page-sizes 属性，可以保留此方法)
+// const handleSizeChange = (val) => {
+//     pageSize.value = val;
+//     currentPage.value = 1; // 改变每页大小时重置到第一页
+//     // paginatedAndFilteredReservations 会自动重新计算
+// };
+
+// 处理当前页码变化
+const handlePageChange = (val) => {
+    currentPage.value = val;
+    // paginatedAndFilteredReservations 会自动重新计算
+};
+
 
 // 查看预约详情
 const viewReservationDetails = (reservation) => {
@@ -402,9 +435,12 @@ const confirmCancelReservation = async (reservation) => {
 };
 
 // 监听 userRole 和 currentUserId 的变化，以触发预约数据的首次获取或重新获取
-watch([userRole, currentUserId], () => {
+// 同时也监听 statusFilter 变化，当筛选条件改变时，重置页码并重新计算分页
+watch([userRole, currentUserId, statusFilter], () => {
     if (userRole.value) {
+        // 当角色或筛选状态改变时，重新获取所有数据
         fetchBanquetReservations();
+        currentPage.value = 1; // 重置到第一页
     }
 }, { immediate: true });
 
@@ -568,5 +604,12 @@ onMounted(async () => {
     .el-table-column {
         min-width: 80px;
     }
+}
+
+.pagination-wrapper {
+    display: flex;
+    display: flex;
+    justify-content: center; /* 将分页组件居中 */
+    margin-top: 24px;
 }
 </style>
