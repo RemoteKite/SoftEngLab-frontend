@@ -130,7 +130,7 @@ const registerForm = reactive({
     confirmPassword: '', // Added for password confirmation
     email: '',
     phoneNumber: '',
-    role: 'diner' // Default role for registration
+    role: 'DINER' // Default role for registration
 })
 
 // Custom validation for password confirmation

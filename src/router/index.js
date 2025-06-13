@@ -9,7 +9,7 @@ import Guidance from "@/components/Guidance.vue";
 import DishManagement from "@/components/DishManagement.vue";
 import MenuManagement from "@/components/MenuManagement.vue";
 import Register from "@/components/Register.vue";
-import CreateTag   from "@/components/CreateTag.vue";
+import DietaryTag   from "@/components/DietaryTag.vue";
 import AllergenTag from "@/components/AllergenTag.vue";
 
 const routes = [
@@ -82,7 +82,7 @@ const routes = [
             {
                 path: 'dietary-tags',
                 name: 'DietaryTags',
-                component: CreateTag,
+                component: DietaryTag,
                 meta: { title: '创建标签' }
             },
             {
