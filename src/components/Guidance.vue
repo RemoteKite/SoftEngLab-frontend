@@ -178,8 +178,10 @@
 import { ref, reactive } from 'vue';
 import { ElMessage, ElIcon } from 'element-plus';
 import { Loading, UserFilled, Cpu, Star } from '@element-plus/icons-vue'; // Import necessary icons
+import { ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElButton, ElCard, ElRow, ElCol, ElRadioGroup, ElRadioButton, ElInputNumber, ElTabs, ElTabPane, ElProgress, vLoading } from 'element-plus';
+import axios from 'axios'; // 添加axios导入
 
-// Form data
+// 表单数据
 const formData = reactive({
   age: null,
   gender: 'male',
@@ -189,7 +191,7 @@ const formData = reactive({
   dietaryGoal: '',
 });
 
-// Form validation rules
+// 表单验证规则
 const formRules = {
   age: [{ required: true, message: '请输入年龄', trigger: 'blur' }],
   gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
@@ -199,19 +201,17 @@ const formRules = {
   dietaryGoal: [{ required: true, message: '请选择饮食目标', trigger: 'change' }],
 };
 
-const formRef = ref(null); // Reference to the form component
-const isLoading = ref(false); // Loading state for AI response
+const formRef = ref(null);
+const isLoading = ref(false);
 
-// Recommendations data
 const recommendations = reactive({
   macros: null,
   mealSuggestions: null,
   healthyTips: null,
 });
-const recommendationsVisible = ref(false); // Controls visibility of recommendations card
-const activeTab = ref('macros'); // Active tab in recommendations
+const recommendationsVisible = ref(false);
+const activeTab = ref('macros');
 
-// Activity level multipliers for TDEE calculation
 const activityMultipliers = {
   sedentary: 1.2,
   light: 1.375,
@@ -220,7 +220,6 @@ const activityMultipliers = {
   very_active: 1.9,
 };
 
-// Function to calculate BMR (Basal Metabolic Rate) using Mifflin-St Jeor Equation
 const calculateBMR = (weight, height, age, gender) => {
   if (gender === 'male') {
     return (10 * weight) + (6.25 * height) - (5 * age) + 5;
@@ -229,37 +228,30 @@ const calculateBMR = (weight, height, age, gender) => {
   }
 };
 
-// Function to get advice
 const getAdvice = async () => {
   if (!formRef.value) return;
   try {
-    await formRef.value.validate(); // Validate the form
+    await formRef.value.validate();
     isLoading.value = true;
-    recommendationsVisible.value = true; // Show card container, loading will be inside
-    activeTab.value = 'macros'; // Reset to macros tab initially
+    recommendationsVisible.value = true;
+    activeTab.value = 'macros';
 
-    // Calculate BMR
     const bmr = calculateBMR(formData.weight, formData.height, formData.age, formData.gender);
-    // Calculate TDEE (Total Daily Energy Expenditure)
     const tdee = bmr * activityMultipliers[formData.activityLevel];
-
-    // Adjust calories based on dietary goal
     let targetCalories = tdee;
     if (formData.dietaryGoal === 'lose_weight') {
-      targetCalories -= 500; // Deficit for weight loss
+      targetCalories -= 500;
     } else if (formData.dietaryGoal === 'gain_muscle') {
-      targetCalories += 300; // Surplus for muscle gain
+      targetCalories += 300;
     }
-    // Ensure calories are not too low
     targetCalories = Math.max(targetCalories, formData.gender === 'male' ? 1500 : 1200);
 
-    // Macronutrient Ratios
     let proteinRatio, carbsRatio, fatRatio;
     if (formData.dietaryGoal === 'lose_weight') {
       proteinRatio = 0.30; carbsRatio = 0.40; fatRatio = 0.30;
     } else if (formData.dietaryGoal === 'gain_muscle') {
       proteinRatio = 0.30; carbsRatio = 0.45; fatRatio = 0.25;
-    } else { // maintain
+    } else {
       proteinRatio = 0.25; carbsRatio = 0.50; fatRatio = 0.25;
     }
 
@@ -272,152 +264,93 @@ const getAdvice = async () => {
       proteinGrams: proteinGrams,
       carbsGrams: carbsGrams,
       fatGrams: fatGrams,
-      proteinPercentage: proteinRatio * 100,
-      carbsPercentage: carbsRatio * 100,
-      fatPercentage: fatRatio * 100,
+      proteinPercentage: Math.round(proteinRatio * 100),
+      carbsPercentage: Math.round(carbsRatio * 100),
+      fatPercentage: Math.round(fatRatio * 100),
     };
 
-    // --- AI Integration (DeepSeek) ---
-    // 请确保您的 DeepSeek API Key 是有效的
-    const apiKey = "sk-9f4b0f3442bc4c689611e1e67314cf84";
-    const apiUrl = "https://api.deepseek.com/v1/chat/completions";
-
-    const dietaryGoalText = {
-      maintain: "保持健康",
-      lose_weight: "减轻体重",
-      gain_muscle: "增加肌肉"
-    }[formData.dietaryGoal];
-
-    const activityLevelText = {
-      sedentary: "久坐（基本不运动）",
-      light: "轻度（少量运动/每周1-3天）",
-      moderate: "中度（中等强度运动/每周3-5天）",
-      active: "高度（高强度运动/每周6-7天）",
-      very_active: "极高（专业运动员水平）"
-    }[formData.activityLevel];
-
-    const prompt = `
-请根据以下个人信息和饮食目标，提供一份详细的中文健康饮食建议。
-个人信息：
-- 年龄: ${formData.age} 岁
-- 性别: ${formData.gender === 'male' ? '男' : '女'}
-- 身高: ${formData.height} cm
-- 体重: ${formData.weight} kg
-- 活动水平: ${activityLevelText}
-- 饮食目标: ${dietaryGoalText}
-- 每日目标总热量: ${targetCalories.toFixed(0)} 千卡
-- 每日目标蛋白质: ${proteinGrams.toFixed(0)} 克
-- 每日目标碳水化合物: ${carbsGrams.toFixed(0)} 克
-- 每日目标脂肪: ${fatGrams.toFixed(0)} 克
-
-请提供以下两部分内容，并确保内容健康、均衡、多样化，并具有可操作性：
-1. 膳食建议 (mealSuggestions): 针对早餐、午餐、晚餐和加餐，分别提供具体的食物建议。请给出一些实际的食物例子，而不仅仅是食物类别。
-2. 健康贴士 (healthyTips): 提供5条实用的健康饮食和生活习惯贴士。
-
-返回的膳食建议和健康贴士必须满足以下要求：
-1.尽量适合中国人的饮食习惯。
-2.返回内容生动有趣，对用户当前状况风趣地吐槽，禁止冒犯性语言。
-3.必须以用户健康为第一标准，当用户的当前状况与健康标准明显偏离时，要警告用户。
-4.应该更有创新性，不要八杯水这类内容。
-请以严格的JSON格式返回响应，格式如下：
-{
-  "mealSuggestions": {
-    "breakfast": "早餐建议",
-    "lunch": "午餐建议",
-    "dinner": "晚餐建议",
-    "snacks": "加餐建议"
-  },
-  "healthyTips": [
-    "健康贴士1",
-    "健康贴士2",
-    "健康贴士3",
-    "健康贴士4",
-    "健康贴士5"
-  ]
-}
-`;
+    const requestPayload = {
+      ...formData,
+      macros: recommendations.macros
+    };
 
     try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
+      const response = await axios.post('http://localhost:18081/api/get-advice', requestPayload, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${localStorage.getItem('token')|| ''}`,
         },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
-          temperature: 0.85,
-          max_tokens: 500,
-          response_format: { type: "json_object" }
-        })
+        timeout: 30000, // 30秒超时
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("DeepSeek API Error:", errorData);
-        throw new Error(`AI服务请求失败: ${errorData?.error?.message || response.statusText}`);
-      }
+      console.log('API响应:', response); // 添加日志
 
-      const result = await response.json();
+      // axios会自动解析JSON，所以直接使用response.data
+      const result = response.data;
 
       if (result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
         let rawContent = result.choices[0].message.content;
-        console.log("Raw AI response content:", rawContent);
 
         try {
           const aiResponse = JSON.parse(rawContent);
-
           recommendations.mealSuggestions = aiResponse.mealSuggestions;
           recommendations.healthyTips = aiResponse.healthyTips;
           ElMessage.success('AI饮食建议已生成！');
-          activeTab.value = 'meals'; // Switch to meal suggestions tab
+          activeTab.value = 'meals';
         } catch (parseError) {
-          console.error("Failed to parse AI response as valid JSON:", parseError);
-          console.error("String that failed to parse:", rawContent);
-          throw new Error('AI返回的内容不是有效的JSON格式，即使已请求JSON格式输出。');
+          console.error('JSON解析错误:', parseError);
+          throw new Error('AI返回的内容不是有效的JSON格式。');
         }
+      } else if (result.error) {
+        // 处理后端返回的错误
+        throw new Error(result.error);
       } else {
-        console.error("Unexpected DeepSeek response structure:", result);
+        console.error('意外的响应格式:', result);
         throw new Error('AI返回的数据结构不符合预期。');
       }
 
     } catch (aiError) {
-      ElMessage.error(`获取AI建议失败: ${aiError.message}`);
-      console.error("Error fetching AI advice:", aiError);
-      // Fallback to some default/static advice if AI fails
-      recommendations.mealSuggestions = {
-        breakfast: 'AI建议获取失败，请尝试全麦面包和鸡蛋。',
-        lunch: 'AI建议获取失败，请尝试鸡胸肉和蔬菜沙拉。',
-        dinner: 'AI建议获取失败，请尝试清蒸鱼和时蔬。',
-        snacks: 'AI建议获取失败，请尝试一个苹果。',
-      };
-      recommendations.healthyTips = [
-        'AI建议获取失败，请确保网络连接并稍后重试。',
-        '多喝水，保持身体水分。',
-        '规律作息，保证充足睡眠。',
-        '均衡饮食，多吃蔬菜水果。',
-        '适量运动，保持身体健康。'
-      ];
+      console.error('API调用错误:', aiError);
+
+      // axios的错误处理
+      let errorMessage = '获取AI建议失败';
+
+      if (aiError.response) {
+        // 服务器返回了错误状态码
+        console.error('响应错误:', aiError.response.status, aiError.response.data);
+        if (aiError.response.status === 403) {
+          errorMessage = '请求被拒绝，可能是后端认证或CORS问题。请检查后端日志。';
+        } else if (aiError.response.status === 404) {
+          errorMessage = '服务接口不存在，请检查API地址。';
+        } else if (aiError.response.status >= 500) {
+          errorMessage = '服务器内部错误。';
+        } else {
+          errorMessage += `: ${aiError.response.data?.error || aiError.response.statusText}`;
+        }
+      } else if (aiError.request) {
+        // 请求已发出但没有收到响应
+        console.error('请求错误:', aiError.request);
+        errorMessage += ': 网络连接失败，请检查后端服务是否启动。';
+      } else {
+        // 其他错误
+        errorMessage += `: ${aiError.message}`;
+      }
+
+      ElMessage.error(errorMessage);
     } finally {
       isLoading.value = false;
     }
 
   } catch (validationErrors) {
+    console.error('表单验证错误:', validationErrors);
     ElMessage.error('请检查输入项是否都已正确填写。');
-    console.error("Form validation failed:", validationErrors);
-    isLoading.value = false; // Stop loading if validation fails
-    recommendationsVisible.value = false; // Hide card if validation fails before showing it
+    isLoading.value = false;
+    recommendationsVisible.value = false;
   }
 };
 
 
-// Function to reset the form
+
 const resetForm = () => {
   if (formRef.value) {
     formRef.value.resetFields();
@@ -429,9 +362,7 @@ const resetForm = () => {
   isLoading.value = false;
   ElMessage.info('表单已重置。');
 };
-
 </script>
-
 <style>
 /* Basic styling to ensure full height and Tailwind compatibility */
 html, body, #app {
