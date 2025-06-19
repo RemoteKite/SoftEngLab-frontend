@@ -37,7 +37,7 @@
             <el-icon><Odometer /></el-icon>
             <span>仪表盘</span>
           </el-menu-item>
-          <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/canteens">
+          <el-menu-item index="/canteens">
             <el-icon><Shop /></el-icon>
             <span>餐厅管理</span>
           </el-menu-item>
