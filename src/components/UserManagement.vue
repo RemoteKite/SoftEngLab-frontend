@@ -74,8 +74,7 @@
                         <el-select v-model="newUserRole" placeholder="选择新角色" style="width: 100%">
                             <el-option label="普通用户 (DINER)" value="DINER"></el-option>
                             <el-option label="员工 (STAFF)" value="STAFF"></el-option>
-                            <!-- 不允许直接在前端将角色更改为 ADMIN，通常 ADMIN 权限管理有更严格的流程 -->
-                            <!-- <el-option label="管理员 (ADMIN)" value="ADMIN"></el-option> -->
+                            <el-option label="管理员 (ADMIN)" value="ADMIN"></el-option>
                         </el-select>
                     </el-form-item>
                 </el-form>
@@ -331,7 +330,7 @@ const confirmDeleteUser = async (user) => {
 
         await deleteUser(user.userId);
         ElMessage.success('用户删除成功！');
-        fetchUsers(); // 刷新用户列表
+        await fetchUsers(); // 刷新用户列表
     } catch (error) {
         if (error !== 'cancel') {
             ElMessage.error(`删除用户失败: ${error.message || '未知错误'}`);

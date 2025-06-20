@@ -1,16 +1,16 @@
 <template>
     <div class="menu-publish-content">
         <div class="page-header">
-            <h2>菜谱发布管理</h2>
+            <h2>菜单发布管理</h2>
             <button class="action-button" @click="openMenuDialog('add')">
-                <span>+</span> 添加菜谱
+                <span>+</span> 添加菜单
             </button>
         </div>
 
         <el-card class="menu-table-card">
             <template #header>
                 <div class="card-header">
-                    <h3>菜谱列表</h3>
+                    <h3>菜单列表</h3>
                     <div class="header-controls">
                         <el-select
                                 v-model="selectedCanteenId"
@@ -114,7 +114,7 @@
 
         <el-dialog
                 v-model="showPublishDialog"
-                :title="currentOperation === 'edit' ? '编辑菜谱' : '发布菜谱'"
+                :title="currentOperation === 'edit' ? '编辑菜单' : '发布菜单'"
                 width="800px"
                 @close="resetForm"
         >
@@ -554,10 +554,10 @@ const publishMenu = async () => {
 
         if (currentOperation.value === 'add') {
             await publishDailyMenu(payload);
-            ElMessage.success('菜谱发布成功！');
+            ElMessage.success('菜单发布成功！');
         } else if (currentOperation.value === 'edit' && menuForm.menuId) {
             await updateDailyMenu(menuForm.menuId, payload);
-            ElMessage.success('菜谱更新成功！');
+            ElMessage.success('菜单更新成功！');
         }
         showPublishDialog.value = false;
         await fetchAllDailyMenusData(); // Refresh all data after adding/updating
@@ -572,7 +572,7 @@ const publishMenu = async () => {
 const deleteMenu = async (menu) => {
     try {
         await ElMessageBox.confirm(
-            '确定要删除这个菜谱吗？删除后无法恢复。',
+            '确定要删除这个菜单吗？删除后无法恢复。',
             '确认删除',
             {
                 confirmButtonText: '删除',
@@ -582,7 +582,7 @@ const deleteMenu = async (menu) => {
         );
 
         await deleteDailyMenu(menu.menuId);
-        ElMessage.success('菜谱删除成功');
+        ElMessage.success('菜单删除成功');
         await fetchAllDailyMenusData(); // Refresh all data after deletion
     } catch (error) {
         if (error !== 'cancel') {

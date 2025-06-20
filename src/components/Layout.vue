@@ -39,7 +39,7 @@
           </el-menu-item>
           <el-menu-item index="/canteens">
             <el-icon><Shop /></el-icon>
-            <span>餐厅管理</span>
+            <span>食堂管理</span>
           </el-menu-item>
             <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/room">
                 <el-icon><Menu /></el-icon>
@@ -51,7 +51,7 @@
           </el-menu-item>
           <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/publish">
             <el-icon><Edit /></el-icon>
-            <span>发布菜谱</span>
+            <span>发布菜单</span>
           </el-menu-item>
             <el-menu-item v-if="userInfo.role === 'ADMIN' || userInfo.role === 'STAFF'" index="/package">
                 <el-icon><Search /></el-icon>
